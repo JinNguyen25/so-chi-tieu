@@ -70,7 +70,9 @@ table{width:100%;border-collapse:collapse;font-size:14px}
 td,th{padding:6px 4px;border-bottom:1px solid var(--bd);text-align:left}
 td.r,th.r{text-align:right}
 .pill{display:inline-block;padding:1px 8px;border-radius:99px;background:var(--bg);border:1px solid var(--bd);font-size:12px}
-.smsrow{display:flex;gap:8px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--bd)}
+.thumb{width:36px;height:36px;border-radius:8px;object-fit:cover;cursor:pointer;flex:none;border:1px solid var(--bd)}
+.lb{position:fixed;inset:0;background:rgba(0,0,0,.88);display:grid;place-items:center;z-index:50;cursor:zoom-out}
+.lb img{max-width:95vw;max-height:90vh;border-radius:10px}
 @media print{
   :root,:root[data-theme=dark]{--bg:#fff;--card:#fff;--tx:#000;--mut:#555;--bd:#ccc;--pri:#4f46e5;--ok:#16a34a;--bad:#dc2626;--inc:#16a34a}
   header,nav,#quick,#remBanner,section:not(#rep),.noprint{display:none!important}
@@ -103,6 +105,7 @@ td.r,th.r{text-align:right}
 
 <div class="banner hide" id="remBanner"><span>🔔 Hôm nay bạn chưa ghi chép khoản nào. Nhập ngay cho khỏi quên nhé!</span><button class="btn ghost sm" id="remX">Bỏ qua</button></div>
 
+<div class="lb hide" id="lb"><img id="lbImg" alt="ảnh"></div>
 <div class="banner hide" id="updBanner"><span>🆕 Có bản cập nhật mới của app.</span><button class="btn sm" id="updNow">Cập nhật ngay</button></div>
 <div class="banner hide" id="dueBanner"></div>
 
@@ -120,6 +123,7 @@ td.r,th.r{text-align:right}
     <button class="btn ghost hide" id="qCancel">Huỷ</button>
   </div>
   <div class="chips" id="qCats"></div>
+  <div class="row" id="qImgRow"><label class="btn ghost sm" style="cursor:pointer">📷 Thêm ảnh<input id="qImgIn" type="file" accept="image/*" hidden></label><img id="qImgPrev" class="thumb hide" alt="ảnh"><button class="x hide" id="qImgDel" title="Bỏ ảnh">✕</button><span class="mut">Chụp món đồ / hoá đơn để sau này dễ nhận ra khoản chi.</span></div>
   <div class="mut" id="qHint">Mẹo: gõ “500 bento” vào ô số tiền rồi Enter — app tự tách số tiền, ghi chú và đoán danh mục.</div>
 </div>
 
@@ -141,12 +145,6 @@ td.r,th.r{text-align:right}
 
 <section id="tx" class="hide">
   <div class="card">
-    <h3>📩 Dán tin nhắn ngân hàng</h3>
-    <textarea id="smsIn" placeholder="Dán 1 hoặc nhiều tin nhắn biến động số dư (cách nhau bằng dòng trống). Ví dụ:&#10;ご利用金額 1,280円 ご利用先: セブン-イレブン 残高 52,000円&#10;&#10;口座 入金 200,000円 振込 給与 10/25"></textarea>
-    <div class="row" style="margin-top:8px"><button class="btn" id="smsParse">Đọc tin nhắn</button><select id="smsW"></select></div>
-    <div id="smsOut"></div>
-  </div>
-  <div class="card">
     <div class="row"><input id="fSearch" class="grow" type="text" placeholder="Tìm theo ghi chú…"><select id="fCat"></select><select id="fW"></select><select id="fType"><option value="">Tất cả</option><option value="exp">Chỉ chi</option><option value="inc">Chỉ thu</option><option value="trf">Chuyển ví</option></select></div>
     <div id="txList"></div>
   </div>
@@ -163,8 +161,17 @@ td.r,th.r{text-align:right}
     <div class="row" style="margin-top:8px"><input id="wName" class="grow" type="text" placeholder="Tên (vd: PayPay, Yucho, Rakuten Card)"><input id="wOpen" class="grow" type="text" placeholder="Số dư ban đầu (vd: 50k)"></div>
     <div id="wCredit" class="hide">
       <div class="row" style="margin-top:8px"><input id="wLimit" class="grow" type="text" placeholder="Hạn mức thẻ (vd: 30man)"></div>
-      <div class="row" style="margin-top:8px">Ngày chốt sao kê <input id="wClose" type="number" min="1" max="31" value="15" style="width:70px"> Ngày thanh toán <input id="wPay" type="number" min="1" max="31" value="10" style="width:70px"> <select id="wOff"><option value="1">tháng sau</option><option value="0">cùng tháng</option></select></div>
-      <div class="mut">Ví dụ Rakuten Card: chốt cuối tháng (nhập 31), trả ngày 27 tháng sau. “Dư nợ hiện tại” nhập ở ô số dư ban đầu (số dương).</div>
+      <div class="mut" style="margin-top:8px">Chu kỳ chốt sao kê / thanh toán (đã điền sẵn theo mặc định của đa số thẻ ở Nhật, bạn thường không cần sửa):</div>
+      <div class="row" style="margin-top:6px"><select id="wPreset" class="grow">
+        <option value="31|27|1">Mặc định: chốt cuối tháng, trả ngày 27 tháng sau (Rakuten, PayPay Card)</option>
+        <option value="31|26|1">SMBC (Mitsui Sumitomo): chốt cuối tháng, trả ngày 26 tháng sau</option>
+        <option value="15|10|1">SMBC / JCB / d Card: chốt ngày 15, trả ngày 10 tháng sau</option>
+        <option value="10|2|1">AEON: chốt ngày 10, trả ngày 2 tháng sau</option>
+        <option value="4|4|1">Epos: chốt ngày 4, trả ngày 4 tháng sau</option>
+        <option value="27|27|1">Epos: chốt ngày 27, trả ngày 27 tháng sau</option>
+        <option value="custom">Tự nhập ngày…</option></select></div>
+      <div class="row hide" id="wCustom" style="margin-top:8px">Chốt <select id="wClose"><option value="31">cuối tháng</option></select> Trả ngày <input id="wPay" type="number" min="1" max="31" value="27" style="width:70px"> <select id="wOff"><option value="1">tháng sau</option><option value="0">cùng tháng</option></select></div>
+      <div class="mut">Thông tin chu kỳ lấy từ các trang tổng hợp trên mạng, bạn đối chiếu với sao kê thật. Nếu ngày trả rơi vào cuối tuần/ngày lễ thì ngân hàng trừ vào ngày làm việc kế tiếp (app chưa tính). “Dư nợ hiện tại” nhập ở ô số dư ban đầu (số dương).</div>
     </div>
     <div class="row" style="margin-top:8px"><button class="btn" id="wAdd">Thêm</button><button class="btn ghost hide" id="wCancel">Huỷ sửa</button></div></div>
 </section>
@@ -375,13 +382,12 @@ function renderDash(){
 function txRow(t){
   if(t.type==='trf')return `<div class="item"><div class="ico">🔁</div><div class="m"><div>${esc(t.note||'Chuyển ví')}</div><div class="mut">${wal(t.w).ico} ${esc(wal(t.w).name)} → ${wal(t.to).ico} ${esc(wal(t.to).name)}</div></div><b class="trf">${fmt(t.amt)}</b><button class="x" data-del="${t.id}" title="Xoá">✕</button></div>`;
   const c=cat(t.cat);
-  return `<div class="item"><div class="ico" style="background:${c.c}22">${c.i}</div><div class="m"><div>${esc(t.note||c.n)}</div><div class="mut">${c.n} · ${wal(t.w).ico} ${esc(wal(t.w).name)}</div></div><b class="${t.type}">${t.type==='inc'?'+':'−'}${fmt(t.amt)}</b><button class="x" data-edit="${t.id}" title="Sửa">✎</button><button class="x" data-del="${t.id}" title="Xoá">✕</button></div>`;
+  return `<div class="item"><div class="ico" style="background:${c.c}22">${c.i}</div><div class="m"><div>${esc(t.note||c.n)}</div><div class="mut">${c.n} · ${wal(t.w).ico} ${esc(wal(t.w).name)}</div></div>${thumbs[t.id]?`<img class="thumb" data-img="${t.id}" src="${thumbs[t.id]}" alt="ảnh">`:''}<b class="${t.type}">${t.type==='inc'?'+':'−'}${fmt(t.amt)}</b><button class="x" data-edit="${t.id}" title="Sửa">✎</button><button class="x" data-del="${t.id}" title="Xoá">✕</button></div>`;
 }
 function renderTx(){
   const cw=$('#fW').value,cc=$('#fCat').value;
   $('#fW').innerHTML=wOpts(cw,true);$('#fW').value=cw;
   $('#fCat').innerHTML='<option value="">Mọi danh mục</option>'+CATS.map(c=>`<option value="${c.id}">${c.i} ${c.n}</option>`).join('');$('#fCat').value=cc;
-  if(!$('#smsW').options.length)$('#smsW').innerHTML=wOpts(S.lastW);
   const q=$('#fSearch').value.toLowerCase(),fc=$('#fCat').value,ft=$('#fType').value,fw=$('#fW').value;
   const list=monthTx(view).filter(t=>(!q||(t.note||'').toLowerCase().includes(q)||cat(t.cat).n.toLowerCase().includes(q))&&(!fc||t.cat===fc)&&(!ft||t.type===ft)&&(!fw||t.w===fw||t.to===fw)).sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id));
   if(!list.length){$('#txList').innerHTML='<div class="mut" style="padding:20px 0;text-align:center">Chưa có giao dịch nào.</div>';return}
@@ -541,48 +547,6 @@ function checkRemind(){
 }
 setInterval(checkRemind,60000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkRemind()});
 
-/* ---------- SMS parser ---------- */
-function parseSms(raw){
-  let s=raw.replace(/\s+/g,' ').trim();if(!s)return null;
-  const U='円|yen|jpy';
-  // bỏ phần số dư để không nhầm với số tiền giao dịch
-  let t=s.replace(new RegExp('(?:số dư|so du|sd|残高|残額|balance)\\s*[:：]?\\s*[¥￥]?\\s*-?[\\d.,]+\\s*(?:'+U+')?','gi'),' ');
-  const m=t.match(new RegExp('([+-])?\\s*(?:[¥￥]\\s*(\\d{1,3}(?:[.,]\\d{3})+|\\d+)|(\\d{1,3}(?:[.,]\\d{3})+|\\d+)\\s*(?:'+U+'))','i'));
-  if(!m)return null;
-  const amt=parseInt((m[2]||m[3]).replace(/[.,]/g,''),10);if(!amt)return null;
-  let type;
-  if(m[1]==='+')type='inc';else if(m[1]==='-')type='exp';
-  else type=/(入金|振込入金|給与|賞与|お預入|受取|ご入金|nhận|tăng|credit|deposit)/i.test(t)?'inc':'exp';
-  const nm=s.match(/(?:ご利用先|利用先|利用店|店名|摘要|内容|nd|nội dung|content)\s*[:：]\s*(.+?)(?:\s+(?:残高|số dư|so du|sd)\b.*)?$/i);
-  let note=nm?nm[1].trim():'';
-  note=note.replace(/\s*(?:残高|số dư|so du).*$/i,'');
-  if(!note){const b=s.match(/(?:\bat|tại)\s+([^.]{2,40})/i);note=b?b[1].trim():''}
-  if(!note)note=t.replace(m[0],' ').replace(/【[^】]*】/g,'').replace(/\s+/g,' ').trim().slice(0,40);
-  note=note.replace(/\.$/,'').slice(0,60);
-  const dm=s.match(/(\d{1,2})[\/-](\d{1,2})(?:[\/-](\d{2,4}))?/);let date=today();
-  if(dm){ // kiểu Nhật: tháng/ngày
-    let mo=+dm[1],dy=+dm[2];if(mo>12&&dy<=12)[mo,dy]=[dy,mo];
-    const y=dm[3]?(dm[3].length===2?2000+ +dm[3]:+dm[3]):new Date().getFullYear();
-    if(mo>=1&&mo<=12&&dy>=1&&dy<=31)date=`${y}-${String(mo).padStart(2,'0')}-${String(dy).padStart(2,'0')}`}
-  const c=type==='inc'?'luong':(guessCat(note||s)||'khac');
-  return{type,amt,note,date,cat:c};
-}
-let smsRows=[];
-$('#smsParse').onclick=()=>{
-  const parts=$('#smsIn').value.split(/\n\s*\n|\n(?=\S*(?:TK|tk|Vietcombank|VCB|Techcombank|MB|BIDV|ACB|VPBank|TPBank|Agribank))/).map(parseSms);
-  smsRows=parts.filter(Boolean);
-  if(!smsRows.length){$('#smsOut').innerHTML='<div class="tip exp">Không đọc được số tiền nào. Tin nhắn cần có số tiền dạng “1,280円”, “¥1,280” hoặc “1280 JPY”.</div>';return}
-  $('#smsOut').innerHTML=smsRows.map((r,i)=>`<div class="smsrow"><input type="checkbox" checked data-i="${i}" style="margin-top:8px"><div style="flex:1"><div class="row"><b class="${r.type}">${r.type==='inc'?'+':'−'}${fmt(r.amt)}</b><span class="pill">${r.date}</span></div><div class="row" style="margin-top:4px"><input type="text" class="grow sms-note" data-i="${i}" value="${esc(r.note)}" placeholder="Ghi chú"><select class="sms-cat" data-i="${i}">${CATS.filter(c=>(r.type==='inc')===!!c.inc).map(c=>`<option value="${c.id}" ${c.id===r.cat?'selected':''}>${c.i} ${c.n}</option>`).join('')}</select></div></div></div>`).join('')+`<button class="btn" id="smsAdd" style="margin-top:10px">Thêm ${smsRows.length} giao dịch đã chọn</button>`;
-};
-$('#smsOut').onclick=e=>{
-  if(e.target.id!=='smsAdd')return;
-  const w=$('#smsW').value;let n=0;
-  document.querySelectorAll('#smsOut .smsrow').forEach((row,i)=>{
-    if(!row.querySelector('input[type=checkbox]').checked)return;
-    const r=smsRows[i];S.tx.push({id:uid(),date:r.date,type:r.type,amt:r.amt,cat:row.querySelector('.sms-cat').value,note:row.querySelector('.sms-note').value.trim(),w});n++});
-  S.lastW=w;save();$('#smsIn').value='';$('#smsOut').innerHTML=`<div class="tip">✅ Đã thêm ${n} giao dịch.</div>`;smsRows=[];render();
-};
-
 /* ---------- actions ---------- */
 let editTx=null;
 function qEditMode(on){
@@ -590,7 +554,7 @@ function qEditMode(on){
   $('#qAdd').textContent=on?'Lưu thay đổi':'Thêm';$('#qCancel').classList.toggle('hide',!on);
   $('#qEditNote').textContent=on?'✎ Đang sửa một giao dịch':'';
 }
-$('#qCancel').onclick=()=>{$('#qAmt').value='';$('#qNote').value='';$('#qCats').dataset.manual='';qCat=$('#qType').value==='inc'?'luong':'an';qEditMode(false);renderQuick()};
+$('#qCancel').onclick=()=>{pendImg=null;showQImg(null);$('#qAmt').value='';$('#qNote').value='';$('#qCats').dataset.manual='';qCat=$('#qType').value==='inc'?'luong':'an';qEditMode(false);renderQuick()};
 function addQuick(){
   let raw=$('#qAmt').value.trim(),note=$('#qNote').value.trim(),type=$('#qType').value,c=qCat;
   const m=raw.match(/^(\S+)\s+(.+)$/);if(m){raw=m[1];note=note||m[2]}
@@ -599,8 +563,11 @@ function addQuick(){
   if(note&&type==='exp'&&!$('#qCats').dataset.manual){const g=guessCat(note);if(g)c=g}
   const w=$('#qW').value||S.lastW;S.lastW=w;
   const date=$('#qDate').value||today();
-  const t0=editTx&&S.tx.find(x=>x.id===editTx);
-  if(t0)Object.assign(t0,{date,type,amt,cat:c,note,w});else S.tx.push({id:uid(),date,type,amt,cat:c,note,w});
+  const t0=editTx&&S.tx.find(x=>x.id===editTx);let tid;
+  if(t0){Object.assign(t0,{date,type,amt,cat:c,note,w});tid=t0.id}else{tid=uid();S.tx.push({id:tid,date,type,amt,cat:c,note,w})}
+  if(pendImg==='del'){IMG.del('img',tid);IMG.del('thumb',tid);delete thumbs[tid]}
+  else if(pendImg){thumbs[tid]=pendImg.thumb;IMG.put('img',tid,pendImg.full);IMG.put('thumb',tid,pendImg.thumb)}
+  pendImg=null;showQImg(null);
   save();
   $('#qAmt').value='';$('#qNote').value='';$('#qCats').dataset.manual='';
   $('#qHint').innerHTML=`✅ Đã ${t0?'lưu':'thêm'} ${fmt(amt)} — ${cat(c).n}`;qEditMode(false);
@@ -626,8 +593,9 @@ $('#txList').onclick=e=>{
   if(ed){const t=S.tx.find(x=>x.id===ed.dataset.edit);if(!t)return;editTx=t.id;
     $('#qType').value=t.type;qCat=t.cat;$('#qCats').dataset.manual='1';
     $('#qAmt').value=String(t.amt);$('#qNote').value=t.note||'';$('#qDate').value=t.date;
-    renderQuick();$('#qW').value=t.w;qEditMode(true);$('#quick').scrollIntoView({behavior:'smooth',block:'center'});return}
-  const b=e.target.closest('[data-del]');if(b&&confirm('Xoá giao dịch này?')){S.tx=S.tx.filter(t=>t.id!==b.dataset.del);save();render()}};
+    renderQuick();$('#qW').value=t.w;pendImg=null;showQImg(thumbs[t.id]||null);qEditMode(true);$('#quick').scrollIntoView({behavior:'smooth',block:'center'});return}
+  const im=e.target.closest('[data-img]');if(im){openImg(im.dataset.img);return}
+  const b=e.target.closest('[data-del]');if(b&&confirm('Xoá giao dịch này?')){const id=b.dataset.del;S.tx=S.tx.filter(t=>t.id!==id);IMG.del('img',id);IMG.del('thumb',id);delete thumbs[id];save();render()}};
 $('#remX').onclick=()=>{S.remind.dismissed=today();save();checkRemind()};
 
 // wallets
@@ -643,6 +611,11 @@ function wFormMode(){
 }
 function wFormReset(){editW=null;['#wName','#wOpen','#wLimit'].forEach(s=>$(s).value='');wFormMode()}
 $('#wCancel').onclick=wFormReset;
+for(let d=1;d<=28;d++)$('#wClose').add(new Option('ngày '+d,String(d)));
+$('#wPreset').onchange=()=>{
+  const v=$('#wPreset').value;$('#wCustom').classList.toggle('hide',v!=='custom');
+  if(v!=='custom'){const[c,p,o]=v.split('|');$('#wClose').value=c;$('#wPay').value=p;$('#wOff').value=o}
+};
 $('#wAdd').onclick=()=>{
   if(!editW)return;
   const n=$('#wName').value.trim();if(!n)return alert('Nhập tên');
@@ -656,7 +629,10 @@ $('#walList').onclick=e=>{
   const ed=e.target.closest('[data-wedit]');
   if(ed){const w=S.wallets.find(x=>x.id===ed.dataset.wedit);editW=w.id;const ty=wtype(w);
     $('#wType').value=ty;$('#wIco').value=w.ico;$('#wName').value=w.name;$('#wOpen').value=ty==='credit'?String(Math.abs(w.open||0)):String(w.open||0);
-    $('#wLimit').value=w.limit||'';$('#wClose').value=w.closeDay||15;$('#wPay').value=w.payDay||10;$('#wOff').value=String(w.payOff??1);
+    $('#wLimit').value=w.limit||'';
+    const cd=w.closeDay>=29?31:(w.closeDay||31),key=`${cd}|${w.payDay||27}|${w.payOff??1}`;
+    $('#wClose').value=String(cd);$('#wPay').value=w.payDay||27;$('#wOff').value=String(w.payOff??1);
+    const known=[...$('#wPreset').options].some(o=>o.value===key);$('#wPreset').value=known?key:'custom';$('#wCustom').classList.toggle('hide',known);
     wFormMode();$('#wForm').scrollIntoView({behavior:'smooth',block:'center'});return}
   const b=e.target.closest('[data-wdel]');if(!b)return;
   if(S.wallets.length<2)return alert('Phải còn ít nhất 1 ví.');
@@ -732,8 +708,35 @@ if(matchMedia('(display-mode:standalone)').matches)$('#installNote').textContent
 else $('#installNote').textContent='Android: menu Chrome ⋮ → “Cài đặt ứng dụng”. iPhone/iPad: mở bằng Safari → nút Chia sẻ ⬆ → “Thêm vào MH chính”.';
 if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{});
 
+/* ---------- Ảnh đính kèm giao dịch (lưu trên máy bằng IndexedDB, không đồng bộ) ---------- */
+const IMG={db:null,
+  open(){return new Promise(res=>{try{const r=indexedDB.open('sct-img',1);r.onupgradeneeded=()=>{r.result.createObjectStore('img');r.result.createObjectStore('thumb')};r.onsuccess=()=>{IMG.db=r.result;res(true)};r.onerror=()=>res(false)}catch(e){res(false)}})},
+  run(store,mode,fn){return new Promise(res=>{if(!IMG.db)return res(null);try{const t=IMG.db.transaction(store,mode),rq=fn(t.objectStore(store));t.oncomplete=()=>res(rq?rq.result:undefined);t.onerror=t.onabort=()=>res(null)}catch(e){res(null)}})},
+  put(s,k,v){return IMG.run(s,'readwrite',o=>o.put(v,k))},
+  get(s,k){return IMG.run(s,'readonly',o=>o.get(k))},
+  del(s,k){return IMG.run(s,'readwrite',o=>o.delete(k))},
+  loadThumbs(){return new Promise(res=>{if(!IMG.db)return res();try{const c=IMG.db.transaction('thumb').objectStore('thumb').openCursor();c.onsuccess=()=>{const cur=c.result;if(cur){thumbs[cur.key]=cur.value;cur.continue()}else res()};c.onerror=()=>res()}catch(e){res()}})}};
+let thumbs={},pendImg=null;
+function loadImg(file){return new Promise((res,rej)=>{const u=URL.createObjectURL(file),im=new Image();im.onload=()=>{URL.revokeObjectURL(u);res(im)};im.onerror=rej;im.src=u})}
+function scaleImg(im,max,square){
+  const c=document.createElement('canvas'),w=im.naturalWidth,h=im.naturalHeight,g=c.getContext('2d');
+  if(square){const s=Math.min(w,h);c.width=c.height=max;g.drawImage(im,(w-s)/2,(h-s)/2,s,s,0,0,max,max)}
+  else{const k=Math.min(1,max/Math.max(w,h));c.width=Math.round(w*k);c.height=Math.round(h*k);g.drawImage(im,0,0,c.width,c.height)}
+  return c.toDataURL('image/jpeg',square?0.7:0.75);
+}
+function showQImg(src){$('#qImgPrev').classList.toggle('hide',!src);$('#qImgDel').classList.toggle('hide',!src);if(src)$('#qImgPrev').src=src}
+$('#qImgIn').onchange=async e=>{
+  const f=e.target.files[0];e.target.value='';if(!f)return;
+  try{const im=await loadImg(f);pendImg={full:scaleImg(im,1024,false),thumb:scaleImg(im,96,true)};showQImg(pendImg.thumb)}
+  catch(x){alert('Không đọc được ảnh này. Thử ảnh JPG/PNG khác.')}
+};
+$('#qImgDel').onclick=()=>{pendImg=editTx&&thumbs[editTx]?'del':null;showQImg(null)};
+async function openImg(id){const d=await IMG.get('img',id);if(!d)return;$('#lbImg').src=d;$('#lb').classList.remove('hide')}
+$('#lb').onclick=()=>$('#lb').classList.add('hide');
+IMG.open().then(ok=>{if(!ok)$('#qImgRow').classList.add('hide');else IMG.loadThumbs().then(()=>renderTx())});
+
 /* ---------- Cập nhật app ---------- */
-const APP_VERSION='2026.10.01-4';
+const APP_VERSION='2026.10.01-5';
 $('#verTxt').textContent='Phiên bản '+APP_VERSION;
 async function latestVersion(){
   const r=await fetch('index.html?_='+Date.now(),{cache:'no-store'});const m=(await r.text()).match(/APP_VERSION\s*=\s*'([^']+)'/);return m&&m[1];
