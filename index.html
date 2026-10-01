@@ -126,7 +126,7 @@ td.r,th.r{text-align:right}
     <button class="btn ghost hide" id="qCancel">Huỷ</button>
   </div>
   <div class="chips" id="qCats"></div>
-  <div class="row" id="qImgRow"><label class="btn ghost sm" style="cursor:pointer">📷 Thêm ảnh<input id="qImgIn" type="file" accept="image/*" hidden></label><img id="qImgPrev" class="thumb hide" alt="ảnh"><button class="x hide" id="qImgDel" title="Bỏ ảnh">✕</button><label class="btn sm" style="cursor:pointer">🧾 Quét hoá đơn (AI)<input id="scanIn" type="file" accept="image/*" hidden></label><span class="mut">Ảnh để nhớ khoản chi, hoặc quét hoá đơn để AI tách từng món và phân loại.</span></div>
+  <div class="row" id="qImgRow"><label class="btn ghost sm" style="cursor:pointer">📷 Thêm ảnh<input id="qImgIn" type="file" accept="image/*" hidden></label><img id="qImgPrev" class="thumb hide" alt="ảnh"><button class="x hide" id="qImgDel" title="Bỏ ảnh">✕</button><label class="btn sm" style="cursor:pointer">🧾 Quét hoá đơn (AI)<input id="scanIn" type="file" accept="image/*" hidden></label><span class="mut">Ảnh để nhớ khoản chi. Quét hoá đơn hoặc ảnh chụp lịch sử giao dịch (Apple Wallet, app ngân hàng) để AI tách từng dòng và phân loại.</span></div>
   <div class="mut" id="qHint">Mẹo: gõ “500 bento” vào ô số tiền rồi Enter — app tự tách số tiền, ghi chú và đoán danh mục.</div>
 </div>
 
@@ -783,10 +783,16 @@ const lsGet=k=>{try{return localStorage.getItem(k)||''}catch(e){return ''}};
 const lsSet=(k,v)=>{try{v?localStorage.setItem(k,v):localStorage.removeItem(k)}catch(e){}};
 // Tên model Gemini đổi nhanh và hạn mức miễn phí khác nhau → thử lần lượt, nhớ model chạy được
 const GMODELS=['gemini-2.5-flash','gemini-3.1-flash-lite','gemini-3-flash-preview','gemini-3.8-flash','gemini-2.5-flash-lite'];
-const scanPrompt=()=>LANG==='ja'?SCAN_PROMPT.replace('"vi": short Vietnamese name of the item','"vi": always an empty string'):SCAN_PROMPT;
-const SCAN_PROMPT=`You are reading a photo of a shopping receipt (usually Japanese, amounts in JPY). Return ONLY JSON:
-{"store": string, "date": "YYYY-MM-DD" or null, "items":[{"name": item name as printed, "vi": short Vietnamese name of the item, "price": integer JPY paid for this line (unit price x quantity; use the tax-included amount when the receipt shows it), "category": one of ["an","cho","dilai","nha","muasam","giaitri","suckhoe","hoctap","khac"]}], "total": integer total paid or null}
-Rules: do not output subtotal, tax, change, cash tendered, points or payment-method lines as items. If a discount (値引, 割引, クーポン) applies to an item, subtract it from that item's price instead of listing it. Category guide: an = ready-to-eat food, restaurant, cafe, drinks, konbini snacks and lunch boxes; cho = raw groceries and supermarket household supplies; dilai = train, bus, taxi, fuel, parking; nha = rent, utilities, internet; muasam = clothes, electronics, daily goods, drugstore non-medicine; giaitri = movies, games, hobbies, travel fun; suckhoe = medicine, clinic, gym; hoctap = books, tuition, stationery for study; khac = anything else. If the image is not a receipt return {"items":[]}.`;
+const scanPrompt=()=>{
+  const p=SCAN_PROMPT.replace('{TODAY}',today()+' ('+new Date().toLocaleDateString('en-US',{weekday:'long'})+')');
+  return LANG==='ja'?p.replace('"vi": short Vietnamese name','"vi": always an empty string'):p;
+};
+const SCAN_PROMPT=`You are reading a photo or screenshot of ONE of: (a) a shopping receipt, or (b) a list of payment or bank transactions (for example Apple Wallet "recent transactions", or a bank or card app statement). Amounts are JPY. Today is {TODAY}. Return ONLY JSON:
+{"kind": "receipt" or "transactions", "store": string (receipt only, else ""), "date": "YYYY-MM-DD" or null (receipt date), "total": integer total paid or null (receipt only), "items":[{"name": merchant or item name as printed (if a bank row shows only a generic label such as a debit-card label, use that label), "vi": short Vietnamese name, "price": positive integer JPY, "date": "YYYY-MM-DD" or null, "type": "exp" or "inc", "category": one of ["an","cho","dilai","nha","muasam","giaitri","suckhoe","hoctap","khac"]}]}
+Receipt rules: each purchased item is one entry (price = unit price x quantity, tax-included when shown); do not output subtotal, tax, change, cash tendered, points or payment-method lines; subtract a discount (値引, 割引, クーポン) from the item it applies to; type is "exp".
+Transaction-list rules: each row is ONE entry; name = the merchant of that row; price = that row's transaction amount, NOT the running balance (残高) column and not any total; date = that row's date. Resolve relative dates (today, yesterday, 今日, 昨日, "Hôm qua", weekday names such as "Thứ Tư" or Wednesday) to the most recent past calendar date using today's date; if only day and month are shown assume the current year. type = "inc" for incoming money (deposit, salary, refund, 入金, a plus sign or a green amount), otherwise "exp". Keep every row, even if the merchant name is unreadable.
+Category guide: an = ready-to-eat food, restaurants, fast food, cafes, drinks, convenience-store snacks and lunch boxes; cho = raw groceries and supermarket household supplies; dilai = train, bus, taxi, fuel, parking, IC-card (Suica/PASMO) top-ups; nha = rent, utilities, internet; muasam = clothes, electronics, daily goods, drugstore non-medicine, online shopping; giaitri = movies, games, hobbies, leisure; suckhoe = medicine, clinic, gym; hoctap = books, tuition, study supplies; khac = anything else or unknown. For incoming money use "khac".
+If the image contains neither a receipt nor transactions return {"items":[]}.`;
 async function geminiScan(b64){
   const key=lsGet(GKEY);if(!key)throw new Error('NOKEY');
   const body=JSON.stringify({contents:[{parts:[{text:scanPrompt()},{inline_data:{mime_type:'image/jpeg',data:b64}}]}],generationConfig:{responseMimeType:'application/json',temperature:0}});
@@ -843,51 +849,63 @@ async function aiLogicScan(b64){
 // Có khoá Gemini riêng thì dùng khoá đó; không thì dùng Firebase AI Logic
 async function runScan(b64){return lsGet(GKEY)?geminiScan(b64):aiLogicScan(b64)}
 function normScan(o){
-  const ids=CATS.filter(c=>!c.inc).map(c=>c.id);
-  const items=(Array.isArray(o&&o.items)?o.items:[]).map(i=>({name:String(i.name||'').slice(0,60),vi:String(i.vi||'').slice(0,60),price:Math.round(+i.price),
-    cat:ids.includes(i.category)?i.category:(guessCat((i.name||'')+' '+(i.vi||''))||'khac')})).filter(i=>isFinite(i.price)&&i.price>0);
-  const dt=/^\d{4}-\d{2}-\d{2}$/.test((o&&o.date)||'')?o.date:today();
-  return{store:String((o&&o.store)||'').slice(0,40),date:dt>today()?today():dt,total:Math.round(+(o&&o.total))||0,items};
+  const ids=CATS.filter(c=>!c.inc).map(c=>c.id),td=today();
+  const okDate=s=>/^\d{4}-\d{2}-\d{2}$/.test(s||'')&&s<=td;
+  const kind=(o&&o.kind)==='transactions'?'transactions':'receipt';
+  const top=okDate(o&&o.date)?o.date:td;
+  const items=(Array.isArray(o&&o.items)?o.items:[]).map(i=>{
+    const type=i.type==='inc'?'inc':'exp',name=String(i.name||'').slice(0,60),vi=String(i.vi||'').slice(0,60);
+    return{name,vi,price:Math.round(+i.price),type,date:okDate(i.date)?i.date:top,
+      cat:type==='inc'?'luong':(ids.includes(i.category)?i.category:(guessCat(name+' '+vi)||'khac'))};
+  }).filter(i=>isFinite(i.price)&&i.price>0);
+  // danh sách giao dịch: đánh dấu dòng có thể đã nhập rồi (trùng ngày + số tiền + loại)
+  if(kind==='transactions')items.forEach(i=>{i.dup=S.tx.some(t=>t.type===i.type&&t.date===i.date&&t.amt===i.price)});
+  return{kind,store:String((o&&o.store)||'').slice(0,40),date:top,total:kind==='receipt'?Math.round(+(o&&o.total))||0:0,items};
 }
 let scan=null;
+const catOpts=(type,sel)=>CATS.filter(c=>!!c.inc===(type==='inc')).map(c=>`<option value="${c.id}" ${c.id===sel?'selected':''}>${c.i} ${c.n}</option>`).join('');
 function renderScan(){
   const b=$('#scanBox');if(!scan){b.classList.add('hide');return}
   b.classList.remove('hide');
   if(scan.busy){b.innerHTML='<h3>🧾 Quét hoá đơn</h3><div>⏳ Đang đọc hoá đơn… (vài giây)</div>';return}
   if(scan.err){b.innerHTML=`<h3>🧾 Quét hoá đơn</h3><div class="exp">${esc(scan.err)}</div><div class="row" style="margin-top:8px"><button class="btn ghost" id="scCancel">Đóng</button></div>`;return}
+  const tl=scan.kind==='transactions';
   b.innerHTML=`<h3>🧾 Kết quả quét${scan.store?' · '+esc(scan.store):''}</h3>
-    <div class="row"><input id="scDate" type="date" value="${scan.date}"><select id="scW" class="grow">${wOpts(S.lastW)}</select></div>
-    <div class="mut" style="margin:8px 0 2px">Kiểm tra lại từng món, sửa danh mục hoặc số tiền nếu AI đọc sai, bỏ tick món không muốn thêm.</div>
-    <div id="scRows">${scan.items.map((it,i)=>`<div class="scrow"><input type="checkbox" class="sc-on" checked style="margin-top:8px"><div style="flex:1;min-width:0"><div>${esc(it.name||it.vi)}</div>${it.vi&&it.name?`<div class="mut">${esc(it.vi)}</div>`:''}<select class="sc-cat">${CATS.filter(c=>!c.inc).map(c=>`<option value="${c.id}" ${c.id===it.cat?'selected':''}>${c.i} ${c.n}</option>`).join('')}</select></div><input class="sc-amt" type="text" inputmode="numeric" value="${it.price}" style="width:92px"></div>`).join('')}</div>
+    <div class="row"><input id="scDate" type="date" value="${scan.date}" class="${tl?'hide':''}"><select id="scW" class="grow">${wOpts(S.lastW)}</select></div>
+    <div class="mut" style="margin:8px 0 2px">${tl?'Danh sách giao dịch: kiểm tra ngày, loại thu/chi, danh mục và số tiền. Dòng có ⚠ có thể đã nhập rồi nên đang được bỏ tick.':'Kiểm tra lại từng món, sửa danh mục hoặc số tiền nếu AI đọc sai, bỏ tick món không muốn thêm.'}</div>
+    <div id="scRows">${scan.items.map(it=>`<div class="scrow"><input type="checkbox" class="sc-on" ${it.dup?'':'checked'} style="margin-top:8px"><div style="flex:1;min-width:0"><div>${esc(it.name||it.vi)}</div>${it.vi&&it.name?`<div class="mut">${esc(it.vi)}</div>`:''}<div class="row" style="gap:6px">${tl?`<select class="sc-type"><option value="exp" ${it.type==='exp'?'selected':''}>Chi</option><option value="inc" ${it.type==='inc'?'selected':''}>Thu</option></select>`:''}<select class="sc-cat">${catOpts(it.type,it.cat)}</select>${tl?`<input type="date" class="sc-date" value="${it.date}" style="font-size:13px;padding:4px 6px">`:''}</div>${it.dup?'<div class="exp" style="font-size:12px">⚠ Có thể đã nhập rồi (trùng ngày và số tiền)</div>':''}</div><input class="sc-amt" type="text" inputmode="numeric" value="${it.price}" style="width:92px"></div>`).join('')}</div>
     <div id="scSum" style="margin-top:10px"></div>
     <div class="row" style="margin-top:10px"><button class="btn" id="scAdd">Thêm vào chi tiêu</button><button class="btn ghost" id="scCancel">Huỷ</button></div>`;
   scanSum();
 }
 const scNum=el=>parseInt(String(el.value).replace(/[^\d-]/g,''),10)||0;
-function scanRows(all){return [...document.querySelectorAll('#scanBox .scrow')].filter(r=>all||r.querySelector('.sc-on').checked).map(r=>({cat:r.querySelector('.sc-cat').value,amt:scNum(r.querySelector('.sc-amt'))}))}
+const rowType=r=>(r.querySelector('.sc-type')||{}).value||'exp';
+const rowDate=r=>(r.querySelector('.sc-date')||{}).value||$('#scDate').value||today();
+function scanRows(all){return [...document.querySelectorAll('#scanBox .scrow')].filter(r=>all||r.querySelector('.sc-on').checked).map(r=>({cat:r.querySelector('.sc-cat').value,amt:scNum(r.querySelector('.sc-amt')),type:rowType(r)}))}
 function scanSum(){
-  const rows=scanRows().filter(r=>r.amt>0),sum=rows.reduce((a,r)=>a+r.amt,0),by={};rows.forEach(r=>by[r.cat]=(by[r.cat]||0)+r.amt);
-  // phần chênh so với tổng hoá đơn (thường là thuế) tính trên TẤT CẢ các món, kể cả món đang bỏ tick
-  const diff=scan.total?scan.total-scanRows(true).reduce((a,r)=>a+Math.max(0,r.amt),0):0;
+  const rows=scanRows().filter(r=>r.amt>0),exp=rows.filter(r=>r.type==='exp'),inc=rows.filter(r=>r.type==='inc');
+  const sum=exp.reduce((a,r)=>a+r.amt,0),sumInc=inc.reduce((a,r)=>a+r.amt,0),by={};exp.forEach(r=>by[r.cat]=(by[r.cat]||0)+r.amt);
+  // phần chênh so với tổng hoá đơn (thường là thuế) tính trên TẤT CẢ các món chi, kể cả món đang bỏ tick
+  const diff=scan.kind==='receipt'&&scan.total?scan.total-scanRows(true).filter(r=>r.type==='exp').reduce((a,r)=>a+Math.max(0,r.amt),0):0;
   $('#scSum').innerHTML=`<div class="row" style="gap:6px">${Object.entries(by).map(([k,v])=>`<span class="pill">${cat(k).i} ${cat(k).n}: ${fmt(v)}</span>`).join('')}</div>
-    <div style="margin-top:8px"><b>Các món đã chọn: ${fmt(sum)}</b>${scan.total?` <span class="mut">· tổng trên hoá đơn ${fmt(scan.total)}</span>`:''}</div>
+    <div style="margin-top:8px"><b>Các món đã chọn: ${fmt(sum)}</b>${sumInc?` <span class="inc">· Thu ${fmt(sumInc)}</span>`:''}${scan.total?` <span class="mut">· tổng trên hoá đơn ${fmt(scan.total)}</span>`:''}</div>
     ${diff>0?`<label class="checks"><input type="checkbox" id="scTaxOn" ${scan.taxOn?'checked':''}> Thêm ${fmt(diff)} còn lại (thuế/phí) thành 1 khoản “Khác”</label>`:''}`;
   scan.diff=diff;
 }
 function scanAdd(){
-  const date=$('#scDate').value||today(),w=$('#scW').value,sid='scan_'+uid(),made=[];
+  const top=$('#scDate').value||today(),w=$('#scW').value,sid='scan_'+uid(),made=[];
   document.querySelectorAll('#scanBox .scrow').forEach(r=>{
     if(!r.querySelector('.sc-on').checked)return;const amt=scNum(r.querySelector('.sc-amt'));if(amt<=0)return;
     const it=scan.items[[...r.parentNode.children].indexOf(r)];
-    made.push({id:uid(),date,type:'exp',amt,cat:r.querySelector('.sc-cat').value,note:(scan.store?scan.store+': ':'')+(it.vi||it.name),w});
+    made.push({id:uid(),date:rowDate(r),type:rowType(r),amt,cat:r.querySelector('.sc-cat').value,note:(scan.store?scan.store+': ':'')+(it.vi||it.name),w});
   });
-  const taxOn=$('#scTaxOn');if(taxOn&&taxOn.checked&&scan.diff>0)made.push({id:uid(),date,type:'exp',amt:scan.diff,cat:'khac',note:(scan.store?scan.store+': ':'')+'Thuế/phí',w});
+  const taxOn=$('#scTaxOn');if(taxOn&&taxOn.checked&&scan.diff>0)made.push({id:uid(),date:top,type:'exp',amt:scan.diff,cat:'khac',note:(scan.store?scan.store+': ':'')+'Thuế/phí',w});
   if(!made.length)return alert('Chưa có món nào được chọn.');
   IMG.put('img',sid,scan.full);
   made.forEach(t=>{S.tx.push(t);thumbs[t.id]=scan.thumb;IMG.put('thumb',t.id,scan.thumb);IMG.put('img',t.id,'ref:'+sid)});
   S.lastW=w;save();
-  $('#qHint').innerHTML=`✅ Đã thêm ${made.length} khoản từ hoá đơn (${fmt(made.reduce((a,t)=>a+t.amt,0))})`;
-  const d=new Date(date);view=new Date(d.getFullYear(),d.getMonth(),1);
+  $('#qHint').innerHTML=`✅ Đã thêm ${made.length} khoản từ hoá đơn (${fmt(made.filter(t=>t.type==='exp').reduce((a,t)=>a+t.amt,0))})`;
+  const last=made.map(t=>t.date).sort().pop(),d=new Date(last);view=new Date(d.getFullYear(),d.getMonth(),1);
   scan=null;renderScan();render();
 }
 $('#scanIn').onchange=async e=>{
@@ -902,7 +920,12 @@ $('#scanIn').onchange=async e=>{
   renderScan();
 };
 $('#scanBox').addEventListener('input',e=>{if(scan&&scan.items&&e.target.closest('.scrow'))scanSum()});
-$('#scanBox').addEventListener('change',e=>{if(!scan||!scan.items)return;if(e.target.id==='scTaxOn')scan.taxOn=e.target.checked;else if(e.target.closest('.scrow'))scanSum()});
+$('#scanBox').addEventListener('change',e=>{
+  if(!scan||!scan.items)return;
+  if(e.target.id==='scTaxOn')scan.taxOn=e.target.checked;
+  else if(e.target.classList.contains('sc-type')){const cs=e.target.closest('.scrow').querySelector('.sc-cat');cs.innerHTML=catOpts(e.target.value,e.target.value==='inc'?'luong':'khac');scanSum()}
+  else if(e.target.closest('.scrow'))scanSum();
+});
 $('#scanBox').onclick=e=>{if(e.target.id==='scCancel'){scan=null;renderScan()}else if(e.target.id==='scAdd')scanAdd()};
 function renderAiKey(){const k=lsGet(GKEY);
   $('#aiStatus').textContent=k?'Đang dùng khoá Gemini riêng của bạn (đã lưu trên máy này).':aiLogicOn()?'Đang dùng Firebase AI Logic: không cần nhập khoá. Chụp hoá đơn bằng nút “Quét hoá đơn (AI)” ở ô nhập.':'Chưa bật. Hãy bật Firebase AI Logic trong Firebase Console, hoặc dán khoá Gemini riêng ở mục Nâng cao.';$('#gKeyDel').classList.toggle('hide',!k);$('#gKeyIn').placeholder=k?'Đã lưu khoá (••••'+k.slice(-4)+'). Dán khoá mới để thay.':'Dán khoá Gemini API'}
@@ -918,7 +941,7 @@ $('#gKeyTest').onclick=async()=>{
 renderAiKey();
 
 /* ---------- Cập nhật app ---------- */
-const APP_VERSION='2026.10.02-3';
+const APP_VERSION='2026.10.02-4';
 $('#verTxt').textContent='Phiên bản '+APP_VERSION;
 async function latestVersion(){
   const r=await fetch('index.html?_='+Date.now(),{cache:'no-store'});const m=(await r.text()).match(/APP_VERSION\s*=\s*'([^']+)'/);return m&&m[1];
