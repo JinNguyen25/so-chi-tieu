@@ -918,7 +918,7 @@ $('#gKeyTest').onclick=async()=>{
 renderAiKey();
 
 /* ---------- Cập nhật app ---------- */
-const APP_VERSION='2026.10.02-2';
+const APP_VERSION='2026.10.02-3';
 $('#verTxt').textContent='Phiên bản '+APP_VERSION;
 async function latestVersion(){
   const r=await fetch('index.html?_='+Date.now(),{cache:'no-store'});const m=(await r.text()).match(/APP_VERSION\s*=\s*'([^']+)'/);return m&&m[1];
