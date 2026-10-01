@@ -977,7 +977,7 @@ $('#gKeyTest').onclick=async()=>{
 renderAiKey();
 
 /* ---------- Cập nhật app ---------- */
-const APP_VERSION='2026.10.02-5';
+const APP_VERSION='2026.10.02-6';
 $('#verTxt').textContent='Phiên bản '+APP_VERSION;
 async function latestVersion(){
   const r=await fetch('index.html?_='+Date.now(),{cache:'no-store'});const m=(await r.text()).match(/APP_VERSION\s*=\s*'([^']+)'/);return m&&m[1];
@@ -990,7 +990,12 @@ async function checkUpdate(manual){
   }catch(e){if(manual)msg.textContent='Không kiểm tra được (có thể đang offline).'}
 }
 async function applyUpdate(){
-  try{for(const r of await navigator.serviceWorker.getRegistrations())await r.unregister();for(const k of await caches.keys())await caches.delete(k)}catch(e){}
+  try{
+    for(const r of await navigator.serviceWorker.getRegistrations())await r.unregister();
+    for(const k of await caches.keys())await caches.delete(k);
+    // làm mới cả bộ nhớ đệm HTTP của trình duyệt (GitHub Pages cho phép cache 10 phút) để không nạp lại bản cũ
+    await Promise.all([location.pathname,'index.html','i18n-ja.js','firebase-config.js','sw.js','manifest.webmanifest'].map(f=>fetch(f,{cache:'reload'}).catch(()=>{})));
+  }catch(e){}
   location.reload();
 }
 $('#updBtn').onclick=()=>checkUpdate(true);
