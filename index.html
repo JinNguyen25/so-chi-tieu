@@ -126,7 +126,7 @@ td.r,th.r{text-align:right}
     <button class="btn ghost hide" id="qCancel">Huỷ</button>
   </div>
   <div class="chips" id="qCats"></div>
-  <div class="row" id="qImgRow"><label class="btn ghost sm" style="cursor:pointer">📷 Thêm ảnh<input id="qImgIn" type="file" accept="image/*" hidden></label><img id="qImgPrev" class="thumb hide" alt="ảnh"><button class="x hide" id="qImgDel" title="Bỏ ảnh">✕</button><label class="btn sm" style="cursor:pointer">🧾 Quét hoá đơn (AI)<input id="scanIn" type="file" accept="image/*" hidden></label><span class="mut">Ảnh để nhớ khoản chi. Quét hoá đơn hoặc ảnh chụp lịch sử giao dịch (Apple Wallet, app ngân hàng) để AI tách từng dòng và phân loại.</span></div>
+  <div class="row" id="qImgRow"><label class="btn ghost sm" style="cursor:pointer">📷 Thêm ảnh<input id="qImgIn" type="file" accept="image/*" hidden></label><img id="qImgPrev" class="thumb hide" alt="ảnh"><button class="x hide" id="qImgDel" title="Bỏ ảnh">✕</button><label class="btn sm" style="cursor:pointer">🧾 Quét hoá đơn (AI)<input id="scanIn" type="file" accept="image/*" hidden></label><button class="btn ghost sm" id="emBtn">📧 Dán email</button><span class="mut">Ảnh để nhớ khoản chi. Quét hoá đơn hoặc ảnh chụp lịch sử giao dịch (Apple Wallet, app ngân hàng) để AI tách từng dòng và phân loại.</span></div>
   <div class="mut" id="qHint">Mẹo: gõ “500 bento” vào ô số tiền rồi Enter — app tự tách số tiền, ghi chú và đoán danh mục.</div>
 </div>
 
@@ -263,8 +263,8 @@ if(LANG==='ja'&&window.I18N_JA){
   document.documentElement.lang='ja';document.title=tr(document.title);
 }
 const CATS=[
- {id:'an',n:'Ăn uống',i:'🍜',c:'#f97316',k:'ăn cơm phở bún cafe cà phê trà sữa nhậu bia quán bánh coffee bento konbini コンビニ セブン ローソン ファミマ マック すき家 吉野家 スタバ'},
- {id:'cho',n:'Đi chợ / Siêu thị',i:'🛒',c:'#84cc16',k:'chợ siêu thị rau thịt cá aeon ライフ イオン ドンキ donki 業務スーパー'},
+ {id:'an',n:'Ăn uống',i:'🍜',c:'#f97316',k:'ăn cơm phở bún cafe cà phê trà sữa nhậu bia quán bánh coffee bento konbini コンビニ セブン ローソン ファミマ マック すき家 吉野家 スタバ hidakaya 日高屋 mcdonald マクドナルド sukiya matsuya 松屋 saizeriya サイゼリヤ kfc 丸亀 yoshinoya starbucks'},
+ {id:'cho',n:'Đi chợ / Siêu thị',i:'🛒',c:'#84cc16',k:'chợ siêu thị rau thịt cá aeon ライフ イオン ドンキ donki 業務スーパー comodi コモディ まいばすけっと maruetsu マルエツ ok-store'},
  {id:'dilai',n:'Đi lại',i:'🛵',c:'#06b6d4',k:'xăng grab xe bus taxi gửi vé suica pasmo 電車 バス 交通 jr'},
  {id:'nha',n:'Nhà & Hoá đơn',i:'🏠',c:'#6366f1',k:'nhà điện nước gas wifi internet thuê yachin 家賃 電気 ガス'},
  {id:'muasam',n:'Mua sắm',i:'🛍️',c:'#ec4899',k:'mua áo quần giày shopee lazada amazon rakuten mercari uniqlo ユニクロ 楽天 アマゾン'},
@@ -787,15 +787,16 @@ const scanPrompt=()=>{
   const p=SCAN_PROMPT.replace('{TODAY}',today()+' ('+new Date().toLocaleDateString('en-US',{weekday:'long'})+')');
   return LANG==='ja'?p.replace('"vi": short Vietnamese name','"vi": always an empty string'):p;
 };
-const SCAN_PROMPT=`You are reading a photo or screenshot of ONE of: (a) a shopping receipt, or (b) a list of payment or bank transactions (for example Apple Wallet "recent transactions", or a bank or card app statement). Amounts are JPY. Today is {TODAY}. Return ONLY JSON:
+const SCAN_PROMPT=`You are reading a photo or screenshot of ONE of: (a) a shopping receipt, (b) a list of payment or bank transactions (for example Apple Wallet "recent transactions", or a bank or card app statement), or (c) the pasted TEXT of one or more notification/receipt emails (Japanese, English or Vietnamese; may include several emails). Amounts are JPY. Today is {TODAY}. Return ONLY JSON:
 {"kind": "receipt" or "transactions", "store": string (receipt only, else ""), "date": "YYYY-MM-DD" or null (receipt date), "total": integer total paid or null (receipt only), "items":[{"name": merchant or item name as printed (if a bank row shows only a generic label such as a debit-card label, use that label), "vi": short Vietnamese name, "price": positive integer JPY, "date": "YYYY-MM-DD" or null, "type": "exp" or "inc", "category": one of ["an","cho","dilai","nha","muasam","giaitri","suckhoe","hoctap","khac"]}]}
 Receipt rules: each purchased item is one entry (price = unit price x quantity, tax-included when shown); do not output subtotal, tax, change, cash tendered, points or payment-method lines; subtract a discount (値引, 割引, クーポン) from the item it applies to; type is "exp".
 Transaction-list rules: each row is ONE entry; name = the merchant of that row; price = that row's transaction amount, NOT the running balance (残高) column and not any total; date = that row's date. Resolve relative dates (today, yesterday, 今日, 昨日, "Hôm qua", weekday names such as "Thứ Tư" or Wednesday) to the most recent past calendar date using today's date; if only day and month are shown assume the current year. type = "inc" for incoming money (deposit, salary, refund, 入金, a plus sign or a green amount), otherwise "exp". Keep every row, even if the merchant name is unreadable.
-Category guide: an = ready-to-eat food, restaurants, fast food, cafes, drinks, convenience-store snacks and lunch boxes; cho = raw groceries and supermarket household supplies; dilai = train, bus, taxi, fuel, parking, IC-card (Suica/PASMO) top-ups; nha = rent, utilities, internet; muasam = clothes, electronics, daily goods, drugstore non-medicine, online shopping; giaitri = movies, games, hobbies, leisure; suckhoe = medicine, clinic, gym; hoctap = books, tuition, study supplies; khac = anything else or unknown. For incoming money use "khac".
+Email rules (c): use kind "transactions"; every purchase, charge or subscription payment is ONE entry; price = the amount actually charged (tax-included total for that line, e.g. 180 for an iCloud+ receipt showing subtotal 164 + tax 16); date = the receipt or charge date (NOT a future renewal date); name = the service or merchant; ignore marketing, security and shipping notices that contain no charge; a card-usage notice has name = the store field, price = the usage amount. Several emails in one text give several entries.
+Category guide: an = ready-to-eat food, restaurants, fast food, cafes, drinks, convenience-store snacks and lunch boxes; cho = raw groceries and supermarket household supplies; dilai = train, bus, taxi, fuel, parking, IC-card (Suica/PASMO) top-ups; nha = rent, utilities, internet; muasam = clothes, electronics, daily goods, drugstore non-medicine, online shopping; giaitri = movies, games, hobbies, leisure; suckhoe = medicine, clinic, gym; hoctap = books, tuition, study supplies; khac = anything else or unknown (subscriptions such as iCloud, Apple, Claude, Netflix go to khac). For incoming money use "khac".
 If the image contains neither a receipt nor transactions return {"items":[]}.`;
-async function geminiScan(b64){
+async function geminiScan(inp){
   const key=lsGet(GKEY);if(!key)throw new Error('NOKEY');
-  const body=JSON.stringify({contents:[{parts:[{text:scanPrompt()},{inline_data:{mime_type:'image/jpeg',data:b64}}]}],generationConfig:{responseMimeType:'application/json',temperature:0}});
+  const body=JSON.stringify({contents:[{parts:[{text:scanPrompt()},inp.text?{text:'EMAIL TEXT:\n'+inp.text}:{inline_data:{mime_type:'image/jpeg',data:inp.b64}}]}],generationConfig:{responseMimeType:'application/json',temperature:0}});
   const cands=[lsGet(GMOD),...GMODELS].filter((m,i,a)=>m&&a.indexOf(m)===i);let last;
   for(const m of cands){
     let r,j;
@@ -826,13 +827,13 @@ async function getAIL(){
   if(cfg.recaptchaSiteKey){const ac=await import(base+'firebase-app-check.js');ac.initializeAppCheck(fa,{provider:cfg.recaptchaType==='v3'?new ac.ReCaptchaV3Provider(cfg.recaptchaSiteKey):new ac.ReCaptchaEnterpriseProvider(cfg.recaptchaSiteKey),isTokenAutoRefreshEnabled:true})}
   return AIL={ai:ai.getAI(fa,{backend:new ai.GoogleAIBackend()}),m:ai};
 }
-async function aiLogicScan(b64){
+async function aiLogicScan(inp){
   let A;try{A=await getAIL()}catch(e){throw new Error('Không tải được Firebase AI (đang offline?).')}
   const cands=[lsGet(AMOD),...AIMODELS].filter((m,i,a)=>m&&a.indexOf(m)===i);let last;
   for(const name of cands){
     try{
       const model=A.m.getGenerativeModel(A.ai,{model:name,generationConfig:{responseMimeType:'application/json',temperature:0}});
-      const res=await model.generateContent([scanPrompt(),{inlineData:{data:b64,mimeType:'image/jpeg'}}]);
+      const res=await model.generateContent([scanPrompt(),inp.text?'EMAIL TEXT:\n'+inp.text:{inlineData:{data:inp.b64,mimeType:'image/jpeg'}}]);
       const txt=String(res.response.text()||'').trim().replace(/^```(?:json)?|```$/g,'').trim();
       if(!txt){last=new Error('AI không trả kết quả (ảnh có thể quá mờ hoặc bị chặn).');continue}
       const o=JSON.parse(txt);lsSet(AMOD,name);return o;
@@ -847,7 +848,8 @@ async function aiLogicScan(b64){
   throw friendlyAiErr(last);
 }
 // Có khoá Gemini riêng thì dùng khoá đó; không thì dùng Firebase AI Logic
-async function runScan(b64){return lsGet(GKEY)?geminiScan(b64):aiLogicScan(b64)}
+async function runScan(inp){return lsGet(GKEY)?geminiScan(inp):aiLogicScan(inp)}
+const dayDiff=(a,b)=>Math.abs((new Date(a)-new Date(b))/864e5);
 function normScan(o){
   const ids=CATS.filter(c=>!c.inc).map(c=>c.id),td=today();
   const okDate=s=>/^\d{4}-\d{2}-\d{2}$/.test(s||'')&&s<=td;
@@ -859,7 +861,7 @@ function normScan(o){
       cat:type==='inc'?'luong':(ids.includes(i.category)?i.category:(guessCat(name+' '+vi)||'khac'))};
   }).filter(i=>isFinite(i.price)&&i.price>0);
   // danh sách giao dịch: đánh dấu dòng có thể đã nhập rồi (trùng ngày + số tiền + loại)
-  if(kind==='transactions')items.forEach(i=>{i.dup=S.tx.some(t=>t.type===i.type&&t.date===i.date&&t.amt===i.price)});
+  if(kind==='transactions')items.forEach((i,k)=>{i.dup=S.tx.some(t=>t.type===i.type&&t.amt===i.price&&dayDiff(t.date,i.date)<=1)||items.slice(0,k).some(j=>j.type===i.type&&j.price===i.price&&dayDiff(j.date,i.date)<=1)});
   return{kind,store:String((o&&o.store)||'').slice(0,40),date:top,total:kind==='receipt'?Math.round(+(o&&o.total))||0:0,items};
 }
 let scan=null;
@@ -867,6 +869,7 @@ const catOpts=(type,sel)=>CATS.filter(c=>!!c.inc===(type==='inc')).map(c=>`<opti
 function renderScan(){
   const b=$('#scanBox');if(!scan){b.classList.add('hide');return}
   b.classList.remove('hide');
+  if(scan.paste){b.innerHTML='<h3>📧 Nhập từ email</h3><div class="mut">Mở email thông báo (ゆうちょデビット, Apple, Rakuten…), chọn hết chữ, sao chép rồi dán vào đây. Dán được nhiều email cùng lúc.</div><textarea id="emText" placeholder="利用日時 2026/10/01 20:04:34&#10;利用店舗 COMODI-IIDA MABASHITE&#10;利用金額 308円" style="margin-top:8px"></textarea><div class="row" style="margin-top:8px"><button class="btn" id="emGo">Phân tích</button><button class="btn ghost" id="scCancel">Đóng</button></div>';return}
   if(scan.busy){b.innerHTML='<h3>🧾 Quét hoá đơn</h3><div>⏳ Đang đọc hoá đơn… (vài giây)</div>';return}
   if(scan.err){b.innerHTML=`<h3>🧾 Quét hoá đơn</h3><div class="exp">${esc(scan.err)}</div><div class="row" style="margin-top:8px"><button class="btn ghost" id="scCancel">Đóng</button></div>`;return}
   const tl=scan.kind==='transactions';
@@ -901,8 +904,8 @@ function scanAdd(){
   });
   const taxOn=$('#scTaxOn');if(taxOn&&taxOn.checked&&scan.diff>0)made.push({id:uid(),date:top,type:'exp',amt:scan.diff,cat:'khac',note:(scan.store?scan.store+': ':'')+'Thuế/phí',w});
   if(!made.length)return alert('Chưa có món nào được chọn.');
-  IMG.put('img',sid,scan.full);
-  made.forEach(t=>{S.tx.push(t);thumbs[t.id]=scan.thumb;IMG.put('thumb',t.id,scan.thumb);IMG.put('img',t.id,'ref:'+sid)});
+  if(scan.full)IMG.put('img',sid,scan.full);
+  made.forEach(t=>{S.tx.push(t);if(scan.thumb){thumbs[t.id]=scan.thumb;IMG.put('thumb',t.id,scan.thumb);IMG.put('img',t.id,'ref:'+sid)}});
   S.lastW=w;save();
   $('#qHint').innerHTML=`✅ Đã thêm ${made.length} khoản từ hoá đơn (${fmt(made.filter(t=>t.type==='exp').reduce((a,t)=>a+t.amt,0))})`;
   const last=made.map(t=>t.date).sort().pop(),d=new Date(last);view=new Date(d.getFullYear(),d.getMonth(),1);
@@ -914,7 +917,7 @@ $('#scanIn').onchange=async e=>{
   scan={busy:true};renderScan();$('#scanBox').scrollIntoView({behavior:'smooth',block:'center'});
   try{
     const im=await loadImg(f),ai=scaleImg(im,1600,false),full=scaleImg(im,1024,false),thumb=scaleImg(im,96,true);
-    const d=normScan(await runScan(ai.split(',')[1]));
+    const d=normScan(await runScan({b64:ai.split(',')[1]}));
     scan=d.items.length?Object.assign(d,{full,thumb,taxOn:true}):{err:'Không thấy món nào trên ảnh. Hãy chụp rõ, thẳng và đủ sáng rồi thử lại.'};
   }catch(x){scan={err:x.message==='NOKEY'?'Chưa có khoá Gemini.':x.message}}
   renderScan();
@@ -926,7 +929,40 @@ $('#scanBox').addEventListener('change',e=>{
   else if(e.target.classList.contains('sc-type')){const cs=e.target.closest('.scrow').querySelector('.sc-cat');cs.innerHTML=catOpts(e.target.value,e.target.value==='inc'?'luong':'khac');scanSum()}
   else if(e.target.closest('.scrow'))scanSum();
 });
-$('#scanBox').onclick=e=>{if(e.target.id==='scCancel'){scan=null;renderScan()}else if(e.target.id==='scAdd')scanAdd()};
+// ---- Nhập từ email: ゆうちょデビット đọc bằng quy tắc ngay trên máy; email khác (Apple, Rakuten…) nhờ AI ----
+function parseYucho(text){
+  const re=/利用日時[\s:：]*(\d{4})[\/\-年.](\d{1,2})[\/\-月.](\d{1,2})[^\n]*\n[\s]*利用店舗[\s:：]*([^\n]+?)\s*\n[\s]*利用金額[\s:：]*([\d,]+)\s*円/g;
+  const items=[];let m;
+  while((m=re.exec(text))){
+    const name=m[4].replace(/\s+/g,' ').trim(),price=parseInt(m[5].replace(/,/g,''),10);if(!price)continue;
+    items.push({name,vi:'',price,type:'exp',date:`${m[1]}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`,cat:guessCat(name)||'khac'});
+  }
+  return{items,rest:text.replace(re,' ')};
+}
+$('#emBtn').onclick=()=>{scan={paste:true};renderScan();$('#scanBox').scrollIntoView({behavior:'smooth',block:'center'});setTimeout(()=>{const e=$('#emText');if(e)e.focus()},50)};
+async function emailAnalyze(){
+  const text=$('#emText').value.trim();
+  if(text.length<10)return alert('Hãy dán nội dung email vào ô trên.');
+  const{items:local,rest}=parseYucho(text);
+  const restClean=rest.replace(/[\s\-=_*>|]+/g,' ').trim();
+  const needAI=restClean.length>60||!local.length;   // còn phần chưa hiểu → nhờ AI
+  scan={busy:true};renderScan();
+  let raw={kind:'transactions',items:[]};
+  try{
+    if(needAI){
+      if(!lsGet(GKEY)&&!aiLogicOn()){if(!local.length)throw new Error('Cần bật Firebase AI Logic hoặc khoá Gemini API để đọc email loại này.')}
+      else raw=await runScan({text:restClean.length>60?rest:text});
+    }
+  }catch(x){if(!local.length){scan={err:x.message};renderScan();return}}
+  const d=normScan(raw);d.kind='transactions';
+  const today0=today();
+  local.forEach(i=>d.items.push(i));
+  // làm lại cờ trùng cho toàn bộ danh sách (gồm cả dòng đọc cục bộ)
+  d.items.forEach((i,k)=>{i.dup=S.tx.some(t=>t.type===i.type&&t.amt===i.price&&dayDiff(t.date,i.date)<=1)||d.items.slice(0,k).some(j=>j.type===i.type&&j.price===i.price&&dayDiff(j.date,i.date)<=1)});
+  d.date=today0;
+  scan=d.items.length?d:{err:'Không tìm thấy giao dịch nào trong nội dung đã dán.'};
+  renderScan();
+}$('#scanBox').onclick=e=>{if(e.target.id==='scCancel'){scan=null;renderScan()}else if(e.target.id==='scAdd')scanAdd();else if(e.target.id==='emGo')emailAnalyze()};
 function renderAiKey(){const k=lsGet(GKEY);
   $('#aiStatus').textContent=k?'Đang dùng khoá Gemini riêng của bạn (đã lưu trên máy này).':aiLogicOn()?'Đang dùng Firebase AI Logic: không cần nhập khoá. Chụp hoá đơn bằng nút “Quét hoá đơn (AI)” ở ô nhập.':'Chưa bật. Hãy bật Firebase AI Logic trong Firebase Console, hoặc dán khoá Gemini riêng ở mục Nâng cao.';$('#gKeyDel').classList.toggle('hide',!k);$('#gKeyIn').placeholder=k?'Đã lưu khoá (••••'+k.slice(-4)+'). Dán khoá mới để thay.':'Dán khoá Gemini API'}
 $('#gKeySave').onclick=()=>{const v=$('#gKeyIn').value.trim();if(!v)return $('#gKeyMsg').textContent='Hãy dán khoá vào ô trên.';lsSet(GKEY,v);lsSet(GMOD,'');$('#gKeyIn').value='';$('#gKeyMsg').textContent='✅ Đã lưu khoá trên thiết bị này.';renderAiKey()};
@@ -941,7 +977,7 @@ $('#gKeyTest').onclick=async()=>{
 renderAiKey();
 
 /* ---------- Cập nhật app ---------- */
-const APP_VERSION='2026.10.02-4';
+const APP_VERSION='2026.10.02-5';
 $('#verTxt').textContent='Phiên bản '+APP_VERSION;
 async function latestVersion(){
   const r=await fetch('index.html?_='+Date.now(),{cache:'no-store'});const m=(await r.text()).match(/APP_VERSION\s*=\s*'([^']+)'/);return m&&m[1];

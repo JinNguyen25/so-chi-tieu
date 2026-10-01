@@ -48,6 +48,7 @@ re: [
   [/Đã phá lệ (\d+) ngày\. Chuỗi thắng tính lại từ lần gần nhất\./g, '$1日ルールを破りました。連続記録は直近の失敗から数え直します。'],
   [/Danh mục theo dõi: (.+?) · bắt đầu (\S+)/g, '対象費目: $1 ・ 開始日 $2'],
   [/^\s*ngày\s*$/g, '日'],
+  [/> ngày</g, '>日<'],
   [/^ngày (\d+)$/g, '$1日'],
 
   // báo cáo
@@ -241,7 +242,8 @@ ph: [
   ['Khoá API không hợp lệ. Kiểm tra lại trong Cài đặt.', 'APIキーが無効です。設定を確認してください。'],
   ['Không kết nối được tới Gemini (đang offline?).', 'Geminiに接続できません（オフライン？）。'],
   ['Hạn mức miễn phí của AI đang hết hoặc quá tải. Hãy thử lại sau ít phút, hoặc sang ngày mai.', 'AIの無料枠が上限に達したか、混雑しています。数分後、または明日もう一度お試しください。'],
-  ['Không quét được hoá đơn.', 'レシートをスキャンできませんでした。'], ['Không tải được Firebase AI (đang offline?).', 'Firebase AIを読み込めません（オフライン？）。'],
+  ['Không quét được hoá đơn.', 'レシートをスキャンできませんでした。'], ['📧 Nhập từ email', '📧 メールから取り込み'], ['Mở email thông báo (ゆうちょデビット, Apple, Rakuten…), chọn hết chữ, sao chép rồi dán vào đây. Dán được nhiều email cùng lúc.', '通知メール（ゆうちょデビット、Apple、楽天など）を開き、本文をすべて選択してコピーし、ここに貼り付けてください。複数のメールをまとめて貼り付けられます。'], ['Phân tích', '解析'], ['📧 Dán email', '📧 メールを貼り付け'], ['Hãy dán nội dung email vào ô trên.', '上の欄にメール本文を貼り付けてください。'], ['Cần bật Firebase AI Logic hoặc khoá Gemini API để đọc email loại này.', 'この種類のメールを読むにはFirebase AI LogicまたはGemini APIキーが必要です。'], ['Không tìm thấy giao dịch nào trong nội dung đã dán.', '貼り付けた内容から取引が見つかりませんでした。'],
+  ['Không tải được Firebase AI (đang offline?).', 'Firebase AIを読み込めません（オフライン？）。'],
   ['Firebase App Check chưa được cấu hình (xem hướng dẫn bật quét hoá đơn). Chi tiết:', 'Firebase App Checkが未設定です（レシートスキャン有効化の手順を参照）。詳細:'],
   ['Firebase AI Logic chưa được bật cho project này. Vào Firebase Console → AI Logic → Get started → chọn Gemini Developer API. Chi tiết:', 'このプロジェクトでFirebase AI Logicが有効になっていません。Firebase Console → AI Logic → Get started → Gemini Developer API を選択してください。詳細:'],
   ['Không thấy món nào trên ảnh. Hãy chụp rõ, thẳng và đủ sáng rồi thử lại.', '写真に品目が見つかりません。はっきり・まっすぐ・明るく撮り直してください。'],
