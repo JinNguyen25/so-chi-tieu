@@ -1,4 +1,4 @@
-const CACHE = 'sct-v6';
+const CACHE = 'sct-v7';
 const ASSETS = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png', './firebase-config.js'];
 
 self.addEventListener('install', e => {
@@ -15,7 +15,8 @@ self.addEventListener('activate', e => {
 // Stale-while-revalidate: mở ngay từ cache, ngầm cập nhật bản mới
 self.addEventListener('fetch', e => {
   const req = e.request;
-  if (req.method !== 'GET' || new URL(req.url).origin !== location.origin) return;
+  const u = new URL(req.url);
+  if (req.method !== 'GET' || u.origin !== location.origin || u.searchParams.has('_')) return;
   e.respondWith(
     caches.match(req).then(hit => {
       const net = fetch(req).then(res => {

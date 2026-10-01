@@ -103,6 +103,9 @@ td.r,th.r{text-align:right}
 
 <div class="banner hide" id="remBanner"><span>🔔 Hôm nay bạn chưa ghi chép khoản nào. Nhập ngay cho khỏi quên nhé!</span><button class="btn ghost sm" id="remX">Bỏ qua</button></div>
 
+<div class="banner hide" id="updBanner"><span>🆕 Có bản cập nhật mới của app.</span><button class="btn sm" id="updNow">Cập nhật ngay</button></div>
+<div class="banner hide" id="dueBanner"></div>
+
 <div class="card" id="quick">
   <div class="row">
     <select id="qType"><option value="exp">Chi</option><option value="inc">Thu</option></select>
@@ -126,6 +129,7 @@ td.r,th.r{text-align:right}
   </div>
   <div class="card"><h3>Tổng tài sản (các ví)</h3><div class="big" id="sAssets"></div></div>
   <div class="card"><h3>Hôm nay tiêu được bao nhiêu?</h3><div class="big" id="safe"></div><div class="mut" id="safeSub"></div><div class="bar" style="margin-top:10px"><i id="safeBar"></i></div></div>
+  <div class="card"><h3>Chi theo phương thức thanh toán</h3><div id="payMix"></div></div>
   <div class="grid g2">
     <div class="card"><h3>Chi theo danh mục</h3><div class="row" style="align-items:flex-start"><svg id="donut" width="160" height="160" viewBox="0 0 160 160"></svg><div class="legend" id="legend"></div></div></div>
     <div class="card"><h3>Chi theo ngày</h3><svg id="bars" width="100%" height="170" viewBox="0 0 400 170" preserveAspectRatio="none"></svg></div>
@@ -152,8 +156,15 @@ td.r,th.r{text-align:right}
     <div class="row"><select id="tFrom" class="grow"></select><span>→</span><select id="tTo" class="grow"></select></div>
     <div class="row" style="margin-top:8px"><input id="tAmt" class="grow" type="text" placeholder="Số tiền (vd: 5k)"><input id="tNote" class="grow" type="text" placeholder="Ghi chú (vd: Rút ATM)"><button class="btn" id="tGo">Chuyển</button></div>
     <div class="mut">Chuyển ví không tính là thu hay chi.</div></div>
-  <div class="card"><h3>Thêm ví mới</h3>
-    <div class="row"><select id="wIco"><option>💵</option><option>🏦</option><option>💳</option><option>📱</option><option>🐷</option></select><input id="wName" class="grow" type="text" placeholder="Tên ví (vd: PayPay, Yucho, MUFG)"><input id="wOpen" class="grow" type="text" placeholder="Số dư ban đầu (vd: 50k)"><button class="btn" id="wAdd">Thêm</button></div></div>
+  <div class="card" id="wForm"><h3 id="wFormTitle">Thêm ví / thẻ mới</h3>
+    <div class="row"><select id="wType"><option value="cash">💵 Tiền mặt</option><option value="bank">🏦 Ngân hàng / thẻ ghi nợ</option><option value="epay">📱 Ví điện tử (PayPay…)</option><option value="credit">💳 Thẻ tín dụng</option></select><select id="wIco"><option>💵</option><option>🏦</option><option>💳</option><option>📱</option><option>🐷</option></select></div>
+    <div class="row" style="margin-top:8px"><input id="wName" class="grow" type="text" placeholder="Tên (vd: PayPay, Yucho, Rakuten Card)"><input id="wOpen" class="grow" type="text" placeholder="Số dư ban đầu (vd: 50k)"></div>
+    <div id="wCredit" class="hide">
+      <div class="row" style="margin-top:8px"><input id="wLimit" class="grow" type="text" placeholder="Hạn mức thẻ (vd: 30man)"></div>
+      <div class="row" style="margin-top:8px">Ngày chốt sao kê <input id="wClose" type="number" min="1" max="31" value="15" style="width:70px"> Ngày thanh toán <input id="wPay" type="number" min="1" max="31" value="10" style="width:70px"> <select id="wOff"><option value="1">tháng sau</option><option value="0">cùng tháng</option></select></div>
+      <div class="mut">Ví dụ Rakuten Card: chốt cuối tháng (nhập 31), trả ngày 27 tháng sau. “Dư nợ hiện tại” nhập ở ô số dư ban đầu (số dương).</div>
+    </div>
+    <div class="row" style="margin-top:8px"><button class="btn" id="wAdd">Thêm</button><button class="btn ghost hide" id="wCancel">Huỷ sửa</button></div></div>
 </section>
 
 <section id="bud" class="hide">
@@ -181,6 +192,8 @@ td.r,th.r{text-align:right}
 
 <section id="set" class="hide">
   <div class="card"><h3>☁️ Đồng bộ giữa các thiết bị</h3><div id="syncBox"></div></div>
+  <div class="card"><h3>Phiên bản & cập nhật</h3>
+    <div class="row"><span class="mut" id="verTxt"></span><button class="btn ghost sm" id="updBtn">Kiểm tra cập nhật</button></div><div class="mut" id="updMsg" style="margin-top:6px"></div></div>
   <div class="card"><h3>Cài đặt app</h3>
     <div class="row"><button class="btn hide" id="installBtn">📲 Cài lên màn hình chính</button><span class="mut" id="installNote"></span></div></div>
   <div class="card"><h3>Nhắc ghi chép mỗi ngày</h3>
@@ -298,7 +311,15 @@ function tipsFor(d){
 }
 
 /* ---------- render ---------- */
+function payMix(list){const o={};list.filter(t=>t.type==='exp').forEach(t=>{const k=wtype(wal(t.w));o[k]=(o[k]||0)+t.amt});return Object.entries(o).sort((a,b)=>b[1]-a[1])}
+function renderDue(){
+  const msgs=S.wallets.filter(w=>wtype(w)==='credit').map(w=>({w,c:cardInfo(w)}))
+    .filter(x=>x.c.pay>=today()&&x.c.daysTo<=5&&x.c.due>0)
+    .map(x=>`💳 <b>${esc(x.w.name)}</b>: cần trả <b>${fmt(x.c.due)}</b> trước ngày ${dmy(x.c.pay)} (${x.c.daysTo===0?'hôm nay':'còn '+x.c.daysTo+' ngày'}).`);
+  $('#dueBanner').innerHTML=msgs.join('<br>');$('#dueBanner').classList.toggle('hide',!msgs.length);
+}
 function render(){
+  renderDue();
   $('#monthLbl').textContent='Tháng '+(view.getMonth()+1)+'/'+view.getFullYear();
   renderQuick();renderDash();renderTx();renderWallets();renderBud();renderGroups();renderGoals();renderReport();renderSet();checkRemind();
 }
@@ -332,6 +353,8 @@ function renderDash(){
   const days=Array(dim).fill(0);monthTx(view).filter(t=>t.type==='exp').forEach(t=>days[+t.date.slice(8)-1]+=t.amt);
   const mx=Math.max(...days,1),bw=400/dim;
   $('#bars').innerHTML=days.map((v,i)=>{const h=v/mx*140;return `<rect x="${i*bw+1}" y="${150-h}" width="${bw-2}" height="${Math.max(h,v?2:0)}" rx="2" fill="${isCur&&i+1===now.getDate()?'var(--pri)':'var(--warn)'}"><title>Ngày ${i+1}: ${fmt(v)}</title></rect>`+(i%5===0?`<text x="${i*bw+bw/2}" y="165" text-anchor="middle">${i+1}</text>`:'')}).join('');
+  const mix=payMix(monthTx(view)),mt=mix.reduce((a,[,v])=>a+v,0);
+  $('#payMix').innerHTML=mix.length?mix.map(([k,v])=>`<div style="margin:8px 0"><div class="row" style="justify-content:space-between"><span>${WICO[k]} ${WT[k]}</span><b>${fmt(v)} <span class="mut">(${Math.round(v/mt*100)}%)</span></b></div><div class="bar"><i style="width:${v/mt*100}%;background:${k==='credit'?'var(--warn)':'var(--pri)'}"></i></div></div>`).join(''):'<div class="mut">Chưa có chi tiêu.</div>';
   const tips=tipsFor(view);
   $('#tips').innerHTML=tips.length?tips.map(t=>`<div class="tip">${t}</div>`).join(''):'<div class="mut">Thêm vài giao dịch để nhận xét tự động.</div>';
 }
@@ -355,9 +378,36 @@ function renderTx(){
     html+=txRow(t)});
   $('#txList').innerHTML=html;
 }
+const WT={cash:'Tiền mặt',bank:'Ngân hàng / thẻ ghi nợ',epay:'Ví điện tử',credit:'Thẻ tín dụng'};
+const wtype=w=>w.type||(w.ico==='💵'?'cash':'bank');
+const dmy=s=>s.slice(8)+'/'+s.slice(5,7);
+// Tính sao kê thẻ tín dụng: kỳ đã chốt gần nhất + kỳ đang chạy
+function cardInfo(w){
+  const td=today(),now=new Date(),dim=(y,m)=>new Date(y,m+1,0).getDate();
+  const cd=(y,m)=>ymd(new Date(y,m,Math.min(w.closeDay||31,dim(y,m))));
+  let y=now.getFullYear(),m=now.getMonth(),c0=cd(y,m);
+  if(c0>td){m--;if(m<0){m=11;y--}c0=cd(y,m)}
+  let py=y,pm=m-1;if(pm<0){pm=11;py--}
+  let ny=y,nm=m+1;if(nm>11){nm=0;ny++}
+  const cPrev=cd(py,pm),cNext=cd(ny,nm);
+  const sum=(a,b)=>S.tx.filter(t=>t.w===w.id&&t.type==='exp'&&t.date>a&&t.date<=b).reduce((s,t)=>s+t.amt,0);
+  const stmt=sum(cPrev,c0),running=sum(c0,cNext);
+  let qy=y,qm=m+(+w.payOff||0);while(qm>11){qm-=12;qy++}
+  const pay=ymd(new Date(qy,qm,Math.min(w.payDay||10,dim(qy,qm))));
+  const debt=Math.max(0,-walBal(w.id));
+  const paid=S.tx.filter(t=>t.type==='trf'&&t.to===w.id&&t.date>c0).reduce((s,t)=>s+t.amt,0); // đã trả sau ngày chốt
+  return{c0,cNext,stmt,running,pay,debt,due:Math.max(0,Math.min(stmt-paid,debt)),daysTo:Math.round((new Date(pay+'T00:00')-new Date(td+'T00:00'))/864e5)};
+}
 function renderWallets(){
-  $('#walList').innerHTML=S.wallets.map(w=>{const b=walBal(w.id);
-    return `<div class="card"><div class="row" style="justify-content:space-between"><b style="font-size:17px">${w.ico} ${esc(w.name)}</b><button class="x" data-wdel="${w.id}" title="Xoá ví">✕</button></div><div class="big" style="color:${b<0?'var(--bad)':'var(--tx)'}">${fmt(b)}</div><div class="mut">Số dư ban đầu ${fmt(+w.open||0)}</div></div>`}).join('');
+  $('#walList').innerHTML=S.wallets.map(w=>{const b=walBal(w.id),ty=wtype(w);
+    const head=`<div class="row" style="justify-content:space-between"><b style="font-size:17px">${w.ico} ${esc(w.name)} <span class="pill">${WT[ty]}</span></b><span><button class="x" data-wedit="${w.id}" title="Sửa">✎</button><button class="x" data-wdel="${w.id}" title="Xoá">✕</button></span></div>`;
+    if(ty!=='credit')return `<div class="card">${head}<div class="big" style="color:${b<0?'var(--bad)':'var(--tx)'}">${fmt(b)}</div><div class="mut">Số dư ban đầu ${fmt(+w.open||0)}</div></div>`;
+    const c=cardInfo(w),lim=+w.limit||0,p=lim?Math.min(100,c.debt/lim*100):0;
+    return `<div class="card">${head}<div class="mut">Dư nợ</div><div class="big exp">${fmt(c.debt)}</div>
+      ${lim?`<div class="bar" style="margin:8px 0"><i style="width:${p}%;background:${p>=90?'var(--bad)':p>=70?'var(--warn)':'var(--ok)'}"></i></div><div class="mut">Hạn mức ${fmt(lim)} · còn dùng được <b>${fmt(Math.max(0,lim-c.debt))}</b> (${Math.round(p)}% đã dùng)</div>`:''}
+      <div class="tip">📅 Kỳ đã chốt ngày <b>${dmy(c.c0)}</b>: ${fmt(c.stmt)}${c.pay>=today()?` · trả trước <b>${dmy(c.pay)}</b> (còn ${c.daysTo} ngày), cần trả <b>${fmt(c.due)}</b>`:' · đã qua hạn trả'}</div>
+      <div class="tip">🕒 Kỳ đang chạy (chốt ${dmy(c.cNext)}): ${fmt(c.running)}</div>
+      <div class="mut">Khi trả nợ thẻ, dùng “Chuyển tiền giữa các ví” từ ví ngân hàng sang thẻ này (không tính là chi tiêu).</div></div>`}).join('');
   const f=$('#tFrom').value,t=$('#tTo').value;
   $('#tFrom').innerHTML=wOpts(f||S.wallets[0].id);$('#tTo').innerHTML=wOpts(t||(S.wallets[1]||S.wallets[0]).id);
 }
@@ -446,6 +496,7 @@ function renderReport(){
     <tr><td>Chi trung bình / ngày</td><td class="r">${fmt(exp/dim)}</td></tr>
     <tr><td>Số giao dịch</td><td class="r">${list.length}</td></tr></table></div>
   <div class="card"><h3>Chi theo danh mục</h3>${ents.length?`<table><tr><th>Danh mục</th><th class="r">Số tiền</th><th class="r">Tỷ lệ</th><th class="r">Ngân sách</th></tr>${ents.map(([id,v])=>{const b=+S.bud[id]||0;return `<tr><td>${cat(id).i} ${cat(id).n}</td><td class="r">${fmt(v)}</td><td class="r">${Math.round(v/exp*100)}%</td><td class="r">${b?`${Math.round(v/b*100)}% của ${fmt(b)}`:'—'}</td></tr>`}).join('')}</table>`:'<div class="mut">Không có chi tiêu.</div>'}</div>
+  <div class="card"><h3>Chi theo phương thức thanh toán</h3>${payMix(list).length?`<table>${payMix(list).map(([k,v])=>`<tr><td>${WICO[k]} ${WT[k]}</td><td class="r">${fmt(v)}</td><td class="r">${Math.round(v/exp*100)}%</td></tr>`).join('')}</table>`:'<div class="mut">—</div>'}</div>
   <div class="card"><h3>5 khoản chi lớn nhất</h3>${top.length?`<table>${top.map(t=>`<tr><td>${t.date.slice(8)}/${t.date.slice(5,7)}</td><td>${esc(t.note||cat(t.cat).n)}</td><td class="r">${fmt(t.amt)}</td></tr>`).join('')}</table>`:'<div class="mut">—</div>'}</div>
   <div class="card"><h3>Số dư các ví hiện tại</h3><table>${S.wallets.map(w=>`<tr><td>${w.ico} ${esc(w.name)}</td><td class="r">${fmt(walBal(w.id))}</td></tr>`).join('')}</table></div>
   <div class="card"><h3>Nhận xét</h3>${tipsFor(view).map(t=>`<div class="tip">${t}</div>`).join('')||'<div class="mut">—</div>'}</div>`;
@@ -549,15 +600,40 @@ $('#txList').onclick=e=>{const b=e.target.closest('[data-del]');if(b&&confirm('X
 $('#remX').onclick=()=>{S.remind.dismissed=today();save();checkRemind()};
 
 // wallets
-$('#wAdd').onclick=()=>{const n=$('#wName').value.trim();if(!n)return alert('Nhập tên ví');const o=$('#wOpen').value.trim()?parseAmt($('#wOpen').value):0;if(isNaN(o))return alert('Số dư không hợp lệ');
-  S.wallets.push({id:uid(),name:n,ico:$('#wIco').value,open:o});$('#wName').value=$('#wOpen').value='';save();render()};
-$('#walList').onclick=e=>{const b=e.target.closest('[data-wdel]');if(!b)return;
+let editW=null;
+const WICO={cash:'💵',bank:'🏦',epay:'📱',credit:'💳'};
+function wFormMode(){
+  const cr=$('#wType').value==='credit';$('#wCredit').classList.toggle('hide',!cr);
+  $('#wOpen').placeholder=cr?'Dư nợ hiện tại (vd: 3man, 0 nếu chưa nợ)':'Số dư ban đầu (vd: 50k)';
+  $('#wAdd').textContent=editW?'Lưu thay đổi':'Thêm';$('#wCancel').classList.toggle('hide',!editW);
+  $('#wFormTitle').textContent=editW?'Sửa ví / thẻ':'Thêm ví / thẻ mới';
+}
+function wFormReset(){editW=null;['#wName','#wOpen','#wLimit'].forEach(s=>$(s).value='');$('#wType').value='cash';$('#wIco').value='💵';$('#wClose').value=15;$('#wPay').value=10;$('#wOff').value='1';wFormMode()}
+$('#wType').onchange=()=>{$('#wIco').value=WICO[$('#wType').value];wFormMode()};
+$('#wCancel').onclick=wFormReset;
+$('#wAdd').onclick=()=>{
+  const n=$('#wName').value.trim();if(!n)return alert('Nhập tên ví / thẻ');
+  const ty=$('#wType').value;let o=$('#wOpen').value.trim()?parseAmt($('#wOpen').value):0;if(isNaN(o))return alert('Số tiền không hợp lệ');
+  const w={name:n,ico:$('#wIco').value,type:ty,open:ty==='credit'?-Math.abs(o):o};
+  if(ty==='credit'){const lim=$('#wLimit').value.trim()?parseAmt($('#wLimit').value):0;if(isNaN(lim))return alert('Hạn mức không hợp lệ');
+    Object.assign(w,{limit:lim,closeDay:Math.min(31,Math.max(1,+$('#wClose').value||31)),payDay:Math.min(31,Math.max(1,+$('#wPay').value||10)),payOff:+$('#wOff').value})}
+  if(editW){const t=S.wallets.find(x=>x.id===editW);['limit','closeDay','payDay','payOff'].forEach(k=>delete t[k]);Object.assign(t,w)}
+  else S.wallets.push(Object.assign({id:uid()},w));
+  wFormReset();save();render()};
+$('#walList').onclick=e=>{
+  const ed=e.target.closest('[data-wedit]');
+  if(ed){const w=S.wallets.find(x=>x.id===ed.dataset.wedit);editW=w.id;const ty=wtype(w);
+    $('#wType').value=ty;$('#wIco').value=w.ico;$('#wName').value=w.name;$('#wOpen').value=ty==='credit'?String(Math.abs(w.open||0)):String(w.open||0);
+    $('#wLimit').value=w.limit||'';$('#wClose').value=w.closeDay||15;$('#wPay').value=w.payDay||10;$('#wOff').value=String(w.payOff??1);
+    wFormMode();$('#wForm').scrollIntoView({behavior:'smooth',block:'center'});return}
+  const b=e.target.closest('[data-wdel]');if(!b)return;
   if(S.wallets.length<2)return alert('Phải còn ít nhất 1 ví.');
   if(S.tx.some(t=>t.w===b.dataset.wdel||t.to===b.dataset.wdel))return alert('Ví này đã có giao dịch nên không xoá được. Hãy xoá hoặc chuyển giao dịch trước.');
   if(confirm('Xoá ví này?')){S.wallets=S.wallets.filter(w=>w.id!==b.dataset.wdel);if(S.lastW===b.dataset.wdel)S.lastW=S.wallets[0].id;save();render()}};
 $('#tGo').onclick=()=>{const a=parseAmt($('#tAmt').value),f=$('#tFrom').value,t=$('#tTo').value;
   if(!a)return alert('Nhập số tiền hợp lệ');if(f===t)return alert('Chọn 2 ví khác nhau');
-  S.tx.push({id:uid(),date:today(),type:'trf',amt:a,w:f,to:t,note:$('#tNote').value.trim(),cat:'khac'});$('#tAmt').value=$('#tNote').value='';save();render()};
+  const tw=S.wallets.find(x=>x.id===t);
+  S.tx.push({id:uid(),date:today(),type:'trf',amt:a,w:f,to:t,note:$('#tNote').value.trim()||(tw&&wtype(tw)==='credit'?'Trả nợ thẻ '+tw.name:''),cat:'khac'});$('#tAmt').value=$('#tNote').value='';save();render()};
 
 // budgets
 $('#budList').addEventListener('change',e=>{if(e.target.classList.contains('bud')){const v=parseAmt(e.target.value||'0');S.bud[e.target.dataset.c]=isNaN(v)?0:v;save();render()}});
@@ -623,6 +699,27 @@ window.addEventListener('appinstalled',()=>{$('#installNote').textContent='Đã 
 if(matchMedia('(display-mode:standalone)').matches)$('#installNote').textContent='Bạn đang dùng bản đã cài ✅';
 else $('#installNote').textContent='Android: menu Chrome ⋮ → “Cài đặt ứng dụng”. iPhone/iPad: mở bằng Safari → nút Chia sẻ ⬆ → “Thêm vào MH chính”.';
 if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{});
+
+/* ---------- Cập nhật app ---------- */
+const APP_VERSION='2026.10.01-3';
+$('#verTxt').textContent='Phiên bản '+APP_VERSION;
+async function latestVersion(){
+  const r=await fetch('index.html?_='+Date.now(),{cache:'no-store'});const m=(await r.text()).match(/APP_VERSION\s*=\s*'([^']+)'/);return m&&m[1];
+}
+async function checkUpdate(manual){
+  const msg=$('#updMsg');if(manual)msg.textContent='Đang kiểm tra…';
+  try{const v=await latestVersion();
+    if(v&&v!==APP_VERSION){$('#updBanner').classList.remove('hide');if(manual)msg.innerHTML='🆕 Có bản mới <b>'+esc(v)+'</b>. Bấm “Cập nhật ngay” ở đầu trang.';return}
+    if(manual)msg.textContent='✅ Bạn đang dùng bản mới nhất.';
+  }catch(e){if(manual)msg.textContent='Không kiểm tra được (có thể đang offline).'}
+}
+async function applyUpdate(){
+  try{for(const r of await navigator.serviceWorker.getRegistrations())await r.unregister();for(const k of await caches.keys())await caches.delete(k)}catch(e){}
+  location.reload();
+}
+$('#updBtn').onclick=()=>checkUpdate(true);
+$('#updNow').onclick=applyUpdate;
+if(location.protocol.startsWith('http'))setTimeout(()=>checkUpdate(false),3000);
 
 /* ---------- Đồng bộ đám mây (Firebase) ----------
    Mỗi giao dịch là 1 document (gộp theo id, xoá bằng "bia mộ"); phần cấu hình (ví, ngân sách,
