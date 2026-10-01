@@ -112,10 +112,12 @@ td.r,th.r{text-align:right}
     <input id="qAmt" class="grow" type="text" placeholder="500 bento · 3k · 1.5man (=15000)" autocomplete="off">
     <input id="qNote" class="grow" type="text" placeholder="Ghi chú" autocomplete="off">
   </div>
+  <div class="mut" id="qEditNote" style="margin-top:8px"></div>
   <div class="row" style="margin-top:8px">
-    <select id="qW"></select>
+    <select id="qW" title="Thanh toán bằng"></select>
     <input id="qDate" type="date">
     <button class="btn" id="qAdd" style="flex:1">Thêm</button>
+    <button class="btn ghost hide" id="qCancel">Huỷ</button>
   </div>
   <div class="chips" id="qCats"></div>
   <div class="mut" id="qHint">Mẹo: gõ “500 bento” vào ô số tiền rồi Enter — app tự tách số tiền, ghi chú và đoán danh mục.</div>
@@ -156,7 +158,7 @@ td.r,th.r{text-align:right}
     <div class="row"><select id="tFrom" class="grow"></select><span>→</span><select id="tTo" class="grow"></select></div>
     <div class="row" style="margin-top:8px"><input id="tAmt" class="grow" type="text" placeholder="Số tiền (vd: 5k)"><input id="tNote" class="grow" type="text" placeholder="Ghi chú (vd: Rút ATM)"><button class="btn" id="tGo">Chuyển</button></div>
     <div class="mut">Chuyển ví không tính là thu hay chi.</div></div>
-  <div class="card" id="wForm"><h3 id="wFormTitle">Thêm ví / thẻ mới</h3>
+  <div class="card hide" id="wForm"><h3 id="wFormTitle">Sửa thẻ / ví</h3>
     <div class="row"><select id="wType"><option value="cash">💵 Tiền mặt</option><option value="bank">🏦 Ngân hàng / thẻ ghi nợ</option><option value="epay">📱 Ví điện tử (PayPay…)</option><option value="credit">💳 Thẻ tín dụng</option></select><select id="wIco"><option>💵</option><option>🏦</option><option>💳</option><option>📱</option><option>🐷</option></select></div>
     <div class="row" style="margin-top:8px"><input id="wName" class="grow" type="text" placeholder="Tên (vd: PayPay, Yucho, Rakuten Card)"><input id="wOpen" class="grow" type="text" placeholder="Số dư ban đầu (vd: 50k)"></div>
     <div id="wCredit" class="hide">
@@ -203,7 +205,10 @@ td.r,th.r{text-align:right}
     <div class="row"><button class="btn" id="expJson">⬇ Sao lưu (JSON)</button><button class="btn ghost" id="expCsv">⬇ Xuất CSV</button><button class="btn ghost" id="impBtn">⬆ Khôi phục</button><input type="file" id="impFile" accept=".json" class="hide"></div>
     <div class="mut" style="margin-top:8px">Dữ liệu lưu trong trình duyệt của thiết bị này. Nhớ sao lưu định kỳ, nhất là trước khi xoá dữ liệu trình duyệt.</div></div>
   <div class="card"><h3>Giao dịch lặp hằng tháng</h3>
-    <div class="row"><input id="rAmt" class="grow" type="text" placeholder="Số tiền (vd: 60k)"><input id="rNote" class="grow" type="text" placeholder="Tên (vd: Tiền nhà)"><select id="rCat"></select><input id="rDay" type="number" min="1" max="28" value="1" style="width:70px" title="Ngày trong tháng"><button class="btn" id="rAdd">Thêm</button></div>
+    <div class="row"><input id="rNote" class="grow" type="text" placeholder="Tên (vd: Tiền nhà, Netflix)"><input id="rAmt" class="grow" type="text" placeholder="Số tiền (vd: 60k)"></div>
+    <div class="row" style="margin-top:8px"><select id="rCat" class="grow"></select><select id="rW" class="grow" title="Thanh toán bằng"></select></div>
+    <div class="row" style="margin-top:8px"><span>Lặp vào ngày</span><input id="rDay" type="number" min="1" max="31" value="1" style="width:80px"><span>hằng tháng</span><button class="btn" id="rAdd" style="margin-left:auto">Thêm</button></div>
+    <div class="mut" style="margin-top:4px">Tháng nào không có ngày đó (vd: 31) thì tính vào cuối tháng.</div>
     <div id="recList" style="margin-top:8px"></div></div>
   <div class="card"><h3>Nguy hiểm</h3><button class="btn ghost" id="wipe" style="color:var(--bad)">Xoá toàn bộ dữ liệu</button></div>
 </section>
@@ -224,7 +229,14 @@ const CATS=[
 ];
 const cat=id=>CATS.find(c=>c.id===id)||CATS[8];
 const KEY='sochitieu.v1';
-const DEF=()=>({tx:[],bud:{},goals:[],rec:[],theme:null,lastRec:'',wallets:[{id:'w1',name:'Tiền mặt',ico:'💵',open:0}],groups:[],chal:null,remind:{on:false,time:'20:00',dismissed:'',notified:''},lastW:'w1'});
+// Các phương thức thanh toán có sẵn (cố định, không thêm mới)
+const DEFW=()=>[
+  {id:'w1',name:'Tiền mặt',ico:'💵',type:'cash',open:0},
+  {id:'w_credit',name:'Thẻ tín dụng',ico:'💳',type:'credit',open:0,limit:0,closeDay:31,payDay:27,payOff:1},
+  {id:'w_debit',name:'Thẻ ghi nợ / Ngân hàng',ico:'🏦',type:'bank',open:0},
+  {id:'w_epay',name:'Ví điện tử (PayPay…)',ico:'📱',type:'epay',open:0}];
+const DEFW_IDS=['w1','w_credit','w_debit','w_epay'];
+const DEF=()=>({tx:[],bud:{},goals:[],rec:[],theme:null,lastRec:'',wallets:DEFW(),groups:[],chal:null,remind:{on:false,time:'20:00',dismissed:'',notified:''},lastW:'w1'});
 function load(){
   let d=null;try{d=JSON.parse(localStorage.getItem(KEY))}catch(e){}
   return migrate(d);
@@ -232,7 +244,8 @@ function load(){
 function migrate(d){
   const base=DEF();if(!d||!Array.isArray(d.tx))return base;
   d=Object.assign(base,d);d.remind=Object.assign(DEF().remind,d.remind||{});
-  if(!d.wallets.length)d.wallets=DEF().wallets;
+  if(!d.wallets.length)d.wallets=DEFW();
+  DEFW().forEach(dw=>{const ex=d.wallets.find(w=>w.id===dw.id);if(!ex)d.wallets.push(dw);else if(!ex.type)ex.type=dw.type});
   d.tx.forEach(t=>{if(!t.w)t.w=d.wallets[0].id});
   if(!d.wallets.some(w=>w.id===d.lastW))d.lastW=d.wallets[0].id;
   return d;
@@ -278,9 +291,10 @@ function guessCat(note){
 function applyRecurring(){
   const cur=mkey(new Date());let changed=false;
   S.rec.forEach(r=>{
-    const date=cur+'-'+String(Math.min(r.day,28)).padStart(2,'0');
+    const now=new Date(),dim=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
+    const date=cur+'-'+String(Math.min(r.day,dim)).padStart(2,'0'); // ngày 31 → cuối tháng nếu tháng ngắn
     if(date<=today()&&!S.tx.some(t=>t.rid===r.id&&t.date.slice(0,7)===cur)){
-      S.tx.push({id:uid(),rid:r.id,date,type:'exp',amt:r.amt,cat:r.cat,note:r.note+' (lặp)',w:S.lastW});changed=true}
+      S.tx.push({id:uid(),rid:r.id,date,type:'exp',amt:r.amt,cat:r.cat,note:r.note+' (lặp)',w:S.wallets.some(w=>w.id===r.w)?r.w:S.lastW});changed=true}
   });
   if(changed)save();
 }
@@ -361,7 +375,7 @@ function renderDash(){
 function txRow(t){
   if(t.type==='trf')return `<div class="item"><div class="ico">🔁</div><div class="m"><div>${esc(t.note||'Chuyển ví')}</div><div class="mut">${wal(t.w).ico} ${esc(wal(t.w).name)} → ${wal(t.to).ico} ${esc(wal(t.to).name)}</div></div><b class="trf">${fmt(t.amt)}</b><button class="x" data-del="${t.id}" title="Xoá">✕</button></div>`;
   const c=cat(t.cat);
-  return `<div class="item"><div class="ico" style="background:${c.c}22">${c.i}</div><div class="m"><div>${esc(t.note||c.n)}</div><div class="mut">${c.n} · ${wal(t.w).ico} ${esc(wal(t.w).name)}</div></div><b class="${t.type}">${t.type==='inc'?'+':'−'}${fmt(t.amt)}</b><button class="x" data-del="${t.id}" title="Xoá">✕</button></div>`;
+  return `<div class="item"><div class="ico" style="background:${c.c}22">${c.i}</div><div class="m"><div>${esc(t.note||c.n)}</div><div class="mut">${c.n} · ${wal(t.w).ico} ${esc(wal(t.w).name)}</div></div><b class="${t.type}">${t.type==='inc'?'+':'−'}${fmt(t.amt)}</b><button class="x" data-edit="${t.id}" title="Sửa">✎</button><button class="x" data-del="${t.id}" title="Xoá">✕</button></div>`;
 }
 function renderTx(){
   const cw=$('#fW').value,cc=$('#fCat').value;
@@ -400,7 +414,7 @@ function cardInfo(w){
 }
 function renderWallets(){
   $('#walList').innerHTML=S.wallets.map(w=>{const b=walBal(w.id),ty=wtype(w);
-    const head=`<div class="row" style="justify-content:space-between"><b style="font-size:17px">${w.ico} ${esc(w.name)} <span class="pill">${WT[ty]}</span></b><span><button class="x" data-wedit="${w.id}" title="Sửa">✎</button><button class="x" data-wdel="${w.id}" title="Xoá">✕</button></span></div>`;
+    const head=`<div class="row" style="justify-content:space-between"><b style="font-size:17px">${w.ico} ${esc(w.name)} <span class="pill">${WT[ty]}</span></b><span><button class="x" data-wedit="${w.id}" title="Sửa số dư / cài đặt">✎</button>${DEFW_IDS.includes(w.id)?'':`<button class="x" data-wdel="${w.id}" title="Xoá">✕</button>`}</span></div>`;
     if(ty!=='credit')return `<div class="card">${head}<div class="big" style="color:${b<0?'var(--bad)':'var(--tx)'}">${fmt(b)}</div><div class="mut">Số dư ban đầu ${fmt(+w.open||0)}</div></div>`;
     const c=cardInfo(w),lim=+w.limit||0,p=lim?Math.min(100,c.debt/lim*100):0;
     return `<div class="card">${head}<div class="mut">Dư nợ</div><div class="big exp">${fmt(c.debt)}</div>
@@ -503,8 +517,10 @@ function renderReport(){
 }
 
 function renderSet(){
-  $('#rCat').innerHTML=CATS.filter(c=>!c.inc).map(c=>`<option value="${c.id}">${c.i} ${c.n}</option>`).join('');
-  $('#recList').innerHTML=S.rec.map(r=>`<div class="item"><div class="ico">${cat(r.cat).i}</div><div class="m"><div>${esc(r.note)}</div><div class="mut">Ngày ${r.day} hằng tháng</div></div><b class="exp">−${fmt(r.amt)}</b><button class="x" data-rdel="${r.id}">✕</button></div>`).join('');
+  const rc=$('#rCat').value,rw=$('#rW').value;
+  $('#rCat').innerHTML=CATS.filter(c=>!c.inc).map(c=>`<option value="${c.id}">${c.i} ${c.n}</option>`).join('');if(rc)$('#rCat').value=rc;
+  $('#rW').innerHTML=wOpts(rw||S.lastW);
+  $('#recList').innerHTML=S.rec.length?S.rec.map(r=>`<div class="item"><div class="ico">${cat(r.cat).i}</div><div class="m"><div>${esc(r.note)}</div><div class="mut">Ngày ${r.day} hằng tháng · ${wal(r.w||S.lastW).ico} ${esc(wal(r.w||S.lastW).name)}</div></div><b class="exp">−${fmt(r.amt)}</b><button class="x" data-rdel="${r.id}">✕</button></div>`).join(''):'<div class="mut">Chưa có khoản lặp nào.</div>';
   $('#remOn').checked=S.remind.on;$('#remTime').value=S.remind.time;
 }
 
@@ -568,6 +584,13 @@ $('#smsOut').onclick=e=>{
 };
 
 /* ---------- actions ---------- */
+let editTx=null;
+function qEditMode(on){
+  if(!on)editTx=null;
+  $('#qAdd').textContent=on?'Lưu thay đổi':'Thêm';$('#qCancel').classList.toggle('hide',!on);
+  $('#qEditNote').textContent=on?'✎ Đang sửa một giao dịch':'';
+}
+$('#qCancel').onclick=()=>{$('#qAmt').value='';$('#qNote').value='';$('#qCats').dataset.manual='';qCat=$('#qType').value==='inc'?'luong':'an';qEditMode(false);renderQuick()};
 function addQuick(){
   let raw=$('#qAmt').value.trim(),note=$('#qNote').value.trim(),type=$('#qType').value,c=qCat;
   const m=raw.match(/^(\S+)\s+(.+)$/);if(m){raw=m[1];note=note||m[2]}
@@ -576,9 +599,11 @@ function addQuick(){
   if(note&&type==='exp'&&!$('#qCats').dataset.manual){const g=guessCat(note);if(g)c=g}
   const w=$('#qW').value||S.lastW;S.lastW=w;
   const date=$('#qDate').value||today();
-  S.tx.push({id:uid(),date,type,amt,cat:c,note,w});save();
+  const t0=editTx&&S.tx.find(x=>x.id===editTx);
+  if(t0)Object.assign(t0,{date,type,amt,cat:c,note,w});else S.tx.push({id:uid(),date,type,amt,cat:c,note,w});
+  save();
   $('#qAmt').value='';$('#qNote').value='';$('#qCats').dataset.manual='';
-  $('#qHint').innerHTML=`✅ Đã thêm ${fmt(amt)} — ${cat(c).n}`;
+  $('#qHint').innerHTML=`✅ Đã ${t0?'lưu':'thêm'} ${fmt(amt)} — ${cat(c).n}`;qEditMode(false);
   const d=new Date(date);view=new Date(d.getFullYear(),d.getMonth(),1);
   qCat=type==='inc'?'luong':'an';render();$('#qAmt').focus();
 }
@@ -596,29 +621,36 @@ $('#tabs').onclick=e=>{
 $('#prev').onclick=()=>{view.setMonth(view.getMonth()-1);render()};
 $('#next').onclick=()=>{view.setMonth(view.getMonth()+1);render()};
 ['#fSearch','#fCat','#fType','#fW'].forEach(s=>$(s).addEventListener('input',renderTx));
-$('#txList').onclick=e=>{const b=e.target.closest('[data-del]');if(b&&confirm('Xoá giao dịch này?')){S.tx=S.tx.filter(t=>t.id!==b.dataset.del);save();render()}};
+$('#txList').onclick=e=>{
+  const ed=e.target.closest('[data-edit]');
+  if(ed){const t=S.tx.find(x=>x.id===ed.dataset.edit);if(!t)return;editTx=t.id;
+    $('#qType').value=t.type;qCat=t.cat;$('#qCats').dataset.manual='1';
+    $('#qAmt').value=String(t.amt);$('#qNote').value=t.note||'';$('#qDate').value=t.date;
+    renderQuick();$('#qW').value=t.w;qEditMode(true);$('#quick').scrollIntoView({behavior:'smooth',block:'center'});return}
+  const b=e.target.closest('[data-del]');if(b&&confirm('Xoá giao dịch này?')){S.tx=S.tx.filter(t=>t.id!==b.dataset.del);save();render()}};
 $('#remX').onclick=()=>{S.remind.dismissed=today();save();checkRemind()};
 
 // wallets
 let editW=null;
 const WICO={cash:'💵',bank:'🏦',epay:'📱',credit:'💳'};
+// Chỉ sửa các phương thức thanh toán có sẵn (không thêm mới): đặt số dư ban đầu, hạn mức, ngày chốt…
 function wFormMode(){
   const cr=$('#wType').value==='credit';$('#wCredit').classList.toggle('hide',!cr);
   $('#wOpen').placeholder=cr?'Dư nợ hiện tại (vd: 3man, 0 nếu chưa nợ)':'Số dư ban đầu (vd: 50k)';
-  $('#wAdd').textContent=editW?'Lưu thay đổi':'Thêm';$('#wCancel').classList.toggle('hide',!editW);
-  $('#wFormTitle').textContent=editW?'Sửa ví / thẻ':'Thêm ví / thẻ mới';
+  $('#wAdd').textContent='Lưu thay đổi';$('#wCancel').textContent='Đóng';$('#wCancel').classList.remove('hide');
+  $('#wForm').classList.toggle('hide',!editW);
+  $('#wType').disabled=true;$('#wIco').disabled=true;
 }
-function wFormReset(){editW=null;['#wName','#wOpen','#wLimit'].forEach(s=>$(s).value='');$('#wType').value='cash';$('#wIco').value='💵';$('#wClose').value=15;$('#wPay').value=10;$('#wOff').value='1';wFormMode()}
-$('#wType').onchange=()=>{$('#wIco').value=WICO[$('#wType').value];wFormMode()};
+function wFormReset(){editW=null;['#wName','#wOpen','#wLimit'].forEach(s=>$(s).value='');wFormMode()}
 $('#wCancel').onclick=wFormReset;
 $('#wAdd').onclick=()=>{
-  const n=$('#wName').value.trim();if(!n)return alert('Nhập tên ví / thẻ');
+  if(!editW)return;
+  const n=$('#wName').value.trim();if(!n)return alert('Nhập tên');
   const ty=$('#wType').value;let o=$('#wOpen').value.trim()?parseAmt($('#wOpen').value):0;if(isNaN(o))return alert('Số tiền không hợp lệ');
   const w={name:n,ico:$('#wIco').value,type:ty,open:ty==='credit'?-Math.abs(o):o};
   if(ty==='credit'){const lim=$('#wLimit').value.trim()?parseAmt($('#wLimit').value):0;if(isNaN(lim))return alert('Hạn mức không hợp lệ');
     Object.assign(w,{limit:lim,closeDay:Math.min(31,Math.max(1,+$('#wClose').value||31)),payDay:Math.min(31,Math.max(1,+$('#wPay').value||10)),payOff:+$('#wOff').value})}
-  if(editW){const t=S.wallets.find(x=>x.id===editW);['limit','closeDay','payDay','payOff'].forEach(k=>delete t[k]);Object.assign(t,w)}
-  else S.wallets.push(Object.assign({id:uid()},w));
+  const t=S.wallets.find(x=>x.id===editW);['limit','closeDay','payDay','payOff'].forEach(k=>delete t[k]);Object.assign(t,w);
   wFormReset();save();render()};
 $('#walList').onclick=e=>{
   const ed=e.target.closest('[data-wedit]');
@@ -675,7 +707,7 @@ $('#chalBox').onclick=e=>{
 $('#repPrint').onclick=()=>window.print();
 
 // settings
-$('#rAdd').onclick=()=>{const a=parseAmt($('#rAmt').value),n=$('#rNote').value.trim();if(!a||!n)return alert('Nhập tên và số tiền');S.rec.push({id:uid(),amt:a,note:n,cat:$('#rCat').value,day:+$('#rDay').value||1});$('#rAmt').value=$('#rNote').value='';save();applyRecurring();render()};
+$('#rAdd').onclick=()=>{const a=parseAmt($('#rAmt').value),n=$('#rNote').value.trim();if(!a||!n)return alert('Nhập tên và số tiền');S.rec.push({id:uid(),amt:a,note:n,cat:$('#rCat').value,w:$('#rW').value,day:Math.min(31,Math.max(1,+$('#rDay').value||1))});$('#rAmt').value=$('#rNote').value='';save();applyRecurring();render()};
 $('#recList').onclick=e=>{const d=e.target.closest('[data-rdel]');if(d){S.rec=S.rec.filter(r=>r.id!==d.dataset.rdel);save();render()}};
 $('#remOn').onchange=async e=>{
   S.remind.on=e.target.checked;
@@ -701,7 +733,7 @@ else $('#installNote').textContent='Android: menu Chrome ⋮ → “Cài đặt 
 if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{});
 
 /* ---------- Cập nhật app ---------- */
-const APP_VERSION='2026.10.01-3';
+const APP_VERSION='2026.10.01-4';
 $('#verTxt').textContent='Phiên bản '+APP_VERSION;
 async function latestVersion(){
   const r=await fetch('index.html?_='+Date.now(),{cache:'no-store'});const m=(await r.text()).match(/APP_VERSION\s*=\s*'([^']+)'/);return m&&m[1];
