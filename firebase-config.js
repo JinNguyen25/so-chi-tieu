@@ -11,6 +11,7 @@ window.FIREBASE_CONFIG = {
 
   // Quét hoá đơn bằng Firebase AI Logic (Gemini). Bật trong Firebase Console → AI Logic.
   aiLogic: true,
-  // Khoá công khai của reCAPTCHA v3 dùng cho App Check (điền sau khi đăng ký, xem hướng dẫn).
-  recaptchaSiteKey: "6Ldqs9ktAAAAAN89EMR6zgKJvudoZvguBRWrhcHq"
+  // Khoá công khai (site key) của Fraud Defense / reCAPTCHA Enterprise dùng cho App Check.
+  recaptchaSiteKey: "6Ldqs9ktAAAAAN89EMR6zgKJvudoZvguBRWrhcHq",
+  recaptchaType: "enterprise"   // "enterprise" (Fraud Defense) hoặc "v3" (reCAPTCHA Classic, đã ngừng)
 };

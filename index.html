@@ -817,7 +817,7 @@ async function getAIL(){
   const cfg=window.FIREBASE_CONFIG,base='https://www.gstatic.com/firebasejs/12.6.0/';
   const [app,ai]=await Promise.all([import(base+'firebase-app.js'),import(base+'firebase-ai.js')]);
   const fa=app.initializeApp(cfg,'ai');
-  if(cfg.recaptchaSiteKey){const ac=await import(base+'firebase-app-check.js');ac.initializeAppCheck(fa,{provider:new ac.ReCaptchaV3Provider(cfg.recaptchaSiteKey),isTokenAutoRefreshEnabled:true})}
+  if(cfg.recaptchaSiteKey){const ac=await import(base+'firebase-app-check.js');ac.initializeAppCheck(fa,{provider:cfg.recaptchaType==='v3'?new ac.ReCaptchaV3Provider(cfg.recaptchaSiteKey):new ac.ReCaptchaEnterpriseProvider(cfg.recaptchaSiteKey),isTokenAutoRefreshEnabled:true})}
   return AIL={ai:ai.getAI(fa,{backend:new ai.GoogleAIBackend()}),m:ai};
 }
 async function aiLogicScan(b64){
@@ -918,7 +918,7 @@ $('#gKeyTest').onclick=async()=>{
 renderAiKey();
 
 /* ---------- Cập nhật app ---------- */
-const APP_VERSION='2026.10.02-1';
+const APP_VERSION='2026.10.02-2';
 $('#verTxt').textContent='Phiên bản '+APP_VERSION;
 async function latestVersion(){
   const r=await fetch('index.html?_='+Date.now(),{cache:'no-store'});const m=(await r.text()).match(/APP_VERSION\s*=\s*'([^']+)'/);return m&&m[1];
