@@ -1,4 +1,4 @@
-const CACHE = 'sct-v9';
+const CACHE = 'sct-v10';
 const ASSETS = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png', './firebase-config.js'];
 
 self.addEventListener('install', e => {
