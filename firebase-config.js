@@ -7,5 +7,10 @@ window.FIREBASE_CONFIG = {
   storageBucket: "controll-e514a.firebasestorage.app",
   messagingSenderId: "594595564366",
   appId: "1:594595564366:web:a9f02f25133341f70b2c1f",
-  measurementId: "G-35726VFN31"
+  measurementId: "G-35726VFN31",
+
+  // Quét hoá đơn bằng Firebase AI Logic (Gemini). Bật trong Firebase Console → AI Logic.
+  aiLogic: true,
+  // Khoá công khai của reCAPTCHA v3 dùng cho App Check (điền sau khi đăng ký, xem hướng dẫn).
+  recaptchaSiteKey: ""
 };

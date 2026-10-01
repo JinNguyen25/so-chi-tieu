@@ -13,6 +13,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>Sổ Chi Tiêu</title>
 <script src="firebase-config.js"></script>
+<script src="i18n-ja.js" charset="utf-8"></script>
 <style>
 :root{--bg:#f5f6fa;--card:#fff;--tx:#1d2433;--mut:#6b7488;--bd:#e4e7ef;--pri:#4f46e5;--ok:#16a34a;--warn:#f59e0b;--bad:#dc2626;--inc:#16a34a}
 :root[data-theme=dark]{--bg:#0f1320;--card:#181d2e;--tx:#e8ebf5;--mut:#8b94ad;--bd:#272e45;--pri:#818cf8;--ok:#4ade80;--warn:#fbbf24;--bad:#f87171;--inc:#4ade80}
@@ -91,7 +92,7 @@ td.r,th.r{text-align:right}
     <button class="btn ghost sm" id="prev">‹</button>
     <strong id="monthLbl" style="min-width:90px;text-align:center"></strong>
     <button class="btn ghost sm" id="next">›</button>
-    <button class="btn ghost sm" id="theme" title="Sáng/Tối">🌓</button>
+    <button class="btn ghost sm" id="theme" title="Sáng/Tối">🌓</button><button class="btn ghost sm" id="langBtn" title="Language / 言語">🌐</button>
   </div>
 </header>
 <nav id="tabs">
@@ -206,10 +207,12 @@ td.r,th.r{text-align:right}
 <section id="set" class="hide">
   <div class="card"><h3>☁️ Đồng bộ giữa các thiết bị</h3><div id="syncBox"></div></div>
   <div class="card" id="aiCard"><h3>🧾 Quét hoá đơn bằng AI</h3>
-    <div class="mut">Cần một khoá Gemini API <b>miễn phí</b> của riêng bạn: vào <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="color:var(--pri)">aistudio.google.com/apikey</a> → <b>Create API key</b> → sao chép rồi dán vào đây.</div>
-    <div class="row" style="margin-top:8px"><input id="gKeyIn" class="grow" type="password" placeholder="Dán khoá Gemini API" autocomplete="off"><button class="btn" id="gKeySave">Lưu</button><button class="btn ghost" id="gKeyTest">Thử khoá</button><button class="btn ghost hide" id="gKeyDel">Xoá khoá</button></div>
-    <div class="mut" id="gKeyMsg" style="margin-top:6px"></div>
-    <div class="mut" style="margin-top:6px">Khoá chỉ lưu trên thiết bị này (không đồng bộ, không nằm trong sao lưu), mỗi máy nhập một lần. Ảnh hoá đơn được gửi tới Google Gemini để đọc; gói miễn phí của Google có thể dùng dữ liệu để cải thiện sản phẩm, nên đừng quét hoá đơn có thông tin nhạy cảm (số thẻ, tên, địa chỉ).</div></div>
+    <div class="mut" id="aiStatus"></div>
+    <div class="mut" style="margin-top:6px">Ảnh hoá đơn được gửi tới Google Gemini để đọc; gói miễn phí của Google có thể dùng dữ liệu để cải thiện sản phẩm, nên đừng quét hoá đơn có thông tin nhạy cảm (số thẻ, tên, địa chỉ).</div>
+    <details style="margin-top:10px"><summary style="cursor:pointer">Nâng cao: dùng khoá Gemini riêng của bạn</summary>
+      <div class="mut" style="margin-top:6px">Chỉ cần khi không dùng Firebase AI Logic. Lấy khoá miễn phí tại <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="color:var(--pri)">aistudio.google.com/apikey</a> → <b>Create API key</b>. Khoá chỉ lưu trên thiết bị này (không đồng bộ, không nằm trong sao lưu).</div>
+      <div class="row" style="margin-top:8px"><input id="gKeyIn" class="grow" type="password" placeholder="Dán khoá Gemini API" autocomplete="off"><button class="btn" id="gKeySave">Lưu</button><button class="btn ghost" id="gKeyTest">Thử khoá</button><button class="btn ghost hide" id="gKeyDel">Xoá khoá</button></div>
+      <div class="mut" id="gKeyMsg" style="margin-top:6px"></div></details></div>
   <div class="card"><h3>Phiên bản & cập nhật</h3>
     <div class="row"><span class="mut" id="verTxt"></span><button class="btn ghost sm" id="updBtn">Kiểm tra cập nhật</button></div><div class="mut" id="updMsg" style="margin-top:6px"></div></div>
   <div class="card"><h3>Cài đặt app</h3>
@@ -231,6 +234,34 @@ td.r,th.r{text-align:right}
 </div>
 
 <script>
+/* ---------- Đa ngôn ngữ: Tiếng Việt (mặc định) / 日本語 ----------
+   Code viết bằng tiếng Việt. Ở chế độ 日本語, mọi nội dung gán vào màn hình (innerHTML, textContent,
+   placeholder, alert/confirm) đều đi qua tr() dùng từ điển trong i18n-ja.js. Đổi ngôn ngữ = lưu lựa chọn rồi tải lại trang. */
+const LANG=(()=>{try{return localStorage.getItem('sct.lang')==='ja'?'ja':'vi'}catch(e){return 'vi'}})();
+const LOC=LANG==='ja'?'ja-JP':'vi-VN';
+let tr=s=>s;
+if(LANG==='ja'&&window.I18N_JA){
+  const D=window.I18N_JA,PH=D.ph.slice().sort((a,b)=>b[0].length-a[0].length);
+  const WD=D.words.map(([v,j])=>[new RegExp('(?<![\\p{L}\\p{N}])'+v.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'(?![\\p{L}\\p{N}])','gu'),j]);
+  tr=s=>{
+    if(typeof s!=='string'||!s)return s;
+    const keep=[];let o=s.replace(/data:[^"'\s)]+/g,m=>{keep.push(m);return '\u0000'+(keep.length-1)+'\u0000'}); // không đụng vào ảnh base64
+    for(const [r,f] of D.re)o=o.replace(r,f);
+    for(const [k,v] of PH)if(o.includes(k))o=o.split(k).join(v);
+    for(const [r,j] of WD)o=o.replace(r,j);
+    return keep.length?o.replace(/\u0000(\d+)\u0000/g,(m,i)=>keep[i]):o;
+  };
+  const hook=(proto,name,fn)=>{const d=Object.getOwnPropertyDescriptor(proto,name);Object.defineProperty(proto,name,{get:d.get,set(v){d.set.call(this,fn(v))},configurable:true})};
+  hook(Element.prototype,'innerHTML',v=>typeof v==='string'?tr(v):v);
+  hook(Node.prototype,'textContent',v=>typeof v==='string'?tr(v):v);
+  hook(HTMLInputElement.prototype,'placeholder',v=>tr(v));
+  for(const k of ['alert','confirm','prompt']){const f=window[k].bind(window);window[k]=(m,...a)=>f(tr(String(m)),...a)}
+  // dịch phần HTML tĩnh (một lần duy nhất, trước khi app vẽ nội dung)
+  const nodes=[],w=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);let n;while(n=w.nextNode())nodes.push(n);
+  nodes.forEach(t=>{if(!/^(SCRIPT|STYLE)$/.test(t.parentNode.nodeName)){const v=tr(t.nodeValue);if(v!==t.nodeValue)t.nodeValue=v}});
+  document.querySelectorAll('[placeholder],[title],[alt]').forEach(el=>['placeholder','title','alt'].forEach(a=>{if(el.hasAttribute(a))el.setAttribute(a,tr(el.getAttribute(a)))}));
+  document.documentElement.lang='ja';document.title=tr(document.title);
+}
 const CATS=[
  {id:'an',n:'Ăn uống',i:'🍜',c:'#f97316',k:'ăn cơm phở bún cafe cà phê trà sữa nhậu bia quán bánh coffee bento konbini コンビニ セブン ローソン ファミマ マック すき家 吉野家 スタバ'},
  {id:'cho',n:'Đi chợ / Siêu thị',i:'🛒',c:'#84cc16',k:'chợ siêu thị rau thịt cá aeon ライフ イオン ドンキ donki 業務スーパー'},
@@ -517,7 +548,7 @@ function renderReport(){
   const dim=new Date(view.getFullYear(),view.getMonth()+1,0).getDate();
   const top=list.filter(t=>t.type==='exp').sort((a,b)=>b.amt-a.amt).slice(0,5);
   const chg=(a,b)=>b?` <span class="mut">(${a>=b?'+':''}${Math.round((a-b)/b*100)}% so với tháng trước)</span>`:'';
-  $('#repBody').innerHTML=`<div class="card"><h2 style="margin:0">Báo cáo chi tiêu tháng ${view.getMonth()+1}/${view.getFullYear()}</h2><div class="mut">Tạo ngày ${new Date().toLocaleDateString('vi-VN')}</div></div>
+  $('#repBody').innerHTML=`<div class="card"><h2 style="margin:0">Báo cáo chi tiêu tháng ${view.getMonth()+1}/${view.getFullYear()}</h2><div class="mut">Tạo ngày ${new Date().toLocaleDateString(LOC)}</div></div>
   <div class="card"><h3>Tổng quan</h3><table>
     <tr><td>Tổng thu</td><td class="r inc"><b>${fmt(inc)}</b>${chg(inc,p.inc)}</td></tr>
     <tr><td>Tổng chi</td><td class="r exp"><b>${fmt(exp)}</b>${chg(exp,p.exp)}</td></tr>
@@ -545,7 +576,7 @@ function needRemind(){
   const n=new Date(),[h,m]=r.time.split(':').map(Number);
   return n.getHours()*60+n.getMinutes()>=h*60+m&&!S.tx.some(t=>t.date===today());
 }
-async function notify(title,body){
+async function notify(title,body){title=tr(title);body=tr(body);
   try{const reg=navigator.serviceWorker&&await navigator.serviceWorker.getRegistration();
     if(reg)reg.showNotification(title,{body,icon:'icon-192.png',badge:'icon-192.png'});else new Notification(title,{body})}catch(e){}
 }
@@ -620,7 +651,7 @@ function wFormMode(){
 }
 function wFormReset(){editW=null;['#wName','#wOpen','#wLimit'].forEach(s=>$(s).value='');wFormMode()}
 $('#wCancel').onclick=wFormReset;
-for(let d=1;d<=28;d++)$('#wClose').add(new Option('ngày '+d,String(d)));
+for(let d=1;d<=28;d++)$('#wClose').add(new Option(tr('ngày '+d),String(d)));
 $('#wPreset').onchange=()=>{
   const v=$('#wPreset').value;$('#wCustom').classList.toggle('hide',v!=='custom');
   if(v!=='custom'){const[c,p,o]=v.split('|');$('#wClose').value=c;$('#wPay').value=p;$('#wOff').value=o}
@@ -664,7 +695,7 @@ $('#groupList').onclick=e=>{
   const card=b.closest('[data-g]'),g=S.groups.find(x=>x.id===card.dataset.g),a=b.dataset.gact;
   if(a==='delg'){if(confirm('Xoá nhóm này?')){S.groups=S.groups.filter(x=>x!==g);save();render()}}
   else if(a==='delx'){g.exp=g.exp.filter(x=>x.id!==b.dataset.e);save();render()}
-  else if(a==='copy'){const t=groupText(g);(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>{b.textContent='✅ Đã chép'},()=>prompt('Sao chép nội dung:',t))}
+  else if(a==='copy'){const t=tr(groupText(g));(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>{b.textContent='✅ Đã chép'},()=>prompt('Sao chép nội dung:',t))}
   else if(a==='addx'){
     const desc=card.querySelector('.ge-desc').value.trim(),amt=parseAmt(card.querySelector('.ge-amt').value),payer=card.querySelector('.ge-payer').value;
     const part=[...card.querySelectorAll('.ge-part:checked')].map(x=>x.value);
@@ -701,10 +732,12 @@ $('#remOn').onchange=async e=>{
 $('#remTime').onchange=e=>{S.remind.time=e.target.value||'20:00';save();checkRemind()};
 function dl(name,text,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
 $('#expJson').onclick=()=>dl('sochitieu-backup-'+today()+'.json',JSON.stringify(S),'application/json');
-$('#expCsv').onclick=()=>{const q=v=>'"'+String(v).replace(/"/g,'""')+'"';dl('chitieu-'+today()+'.csv','﻿Ngày,Loại,Ví,Danh mục,Số tiền,Ghi chú\n'+S.tx.slice().sort((a,b)=>a.date.localeCompare(b.date)).map(t=>[t.date,{inc:'Thu',exp:'Chi',trf:'Chuyển ví'}[t.type],q(wal(t.w).name+(t.to?' → '+wal(t.to).name:'')),t.type==='trf'?'':cat(t.cat).n,t.amt,q(t.note||'')].join(',')).join('\n'),'text/csv')};
+$('#expCsv').onclick=()=>{const q=v=>'"'+String(v).replace(/"/g,'""')+'"';dl('chitieu-'+today()+'.csv','﻿'+tr('Ngày,Loại,Ví,Danh mục,Số tiền,Ghi chú')+'\n'+S.tx.slice().sort((a,b)=>a.date.localeCompare(b.date)).map(t=>[t.date,tr({inc:'Thu',exp:'Chi',trf:'Chuyển ví'}[t.type]),q(tr(wal(t.w).name+(t.to?' → '+wal(t.to).name:''))),t.type==='trf'?'':tr(cat(t.cat).n),t.amt,q(t.note||'')].join(',')).join('\n'),'text/csv')};
 $('#impBtn').onclick=()=>$('#impFile').click();
 $('#impFile').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(!Array.isArray(d.tx))throw 0;if(confirm('Ghi đè dữ liệu hiện tại bằng bản sao lưu?')){S=migrate(d);S.cfgAt=Date.now();save();render()}}catch(x){alert('File không hợp lệ')}};r.readAsText(f);e.target.value=''};
 $('#wipe').onclick=()=>{if(confirm('Xoá TOÀN BỘ dữ liệu? Không thể hoàn tác.')&&confirm('Chắc chắn chứ?')){const th=S.theme;S=DEF();S.theme=th;S.cfgAt=Date.now();save();render()}};
+$('#langBtn').textContent=LANG==='ja'?'🌐 Tiếng Việt':'🌐 日本語';
+$('#langBtn').onclick=()=>{try{localStorage.setItem('sct.lang',LANG==='ja'?'vi':'ja')}catch(e){}location.reload()};
 function setTheme(t){document.documentElement.dataset.theme=t}
 $('#theme').onclick=()=>{S.theme=document.documentElement.dataset.theme==='dark'?'light':'dark';setTheme(S.theme);save()};
 
@@ -750,12 +783,13 @@ const lsGet=k=>{try{return localStorage.getItem(k)||''}catch(e){return ''}};
 const lsSet=(k,v)=>{try{v?localStorage.setItem(k,v):localStorage.removeItem(k)}catch(e){}};
 // Tên model Gemini đổi nhanh và hạn mức miễn phí khác nhau → thử lần lượt, nhớ model chạy được
 const GMODELS=['gemini-2.5-flash','gemini-3.1-flash-lite','gemini-3-flash-preview','gemini-3.8-flash','gemini-2.5-flash-lite'];
+const scanPrompt=()=>LANG==='ja'?SCAN_PROMPT.replace('"vi": short Vietnamese name of the item','"vi": always an empty string'):SCAN_PROMPT;
 const SCAN_PROMPT=`You are reading a photo of a shopping receipt (usually Japanese, amounts in JPY). Return ONLY JSON:
 {"store": string, "date": "YYYY-MM-DD" or null, "items":[{"name": item name as printed, "vi": short Vietnamese name of the item, "price": integer JPY paid for this line (unit price x quantity; use the tax-included amount when the receipt shows it), "category": one of ["an","cho","dilai","nha","muasam","giaitri","suckhoe","hoctap","khac"]}], "total": integer total paid or null}
 Rules: do not output subtotal, tax, change, cash tendered, points or payment-method lines as items. If a discount (値引, 割引, クーポン) applies to an item, subtract it from that item's price instead of listing it. Category guide: an = ready-to-eat food, restaurant, cafe, drinks, konbini snacks and lunch boxes; cho = raw groceries and supermarket household supplies; dilai = train, bus, taxi, fuel, parking; nha = rent, utilities, internet; muasam = clothes, electronics, daily goods, drugstore non-medicine; giaitri = movies, games, hobbies, travel fun; suckhoe = medicine, clinic, gym; hoctap = books, tuition, stationery for study; khac = anything else. If the image is not a receipt return {"items":[]}.`;
 async function geminiScan(b64){
   const key=lsGet(GKEY);if(!key)throw new Error('NOKEY');
-  const body=JSON.stringify({contents:[{parts:[{text:SCAN_PROMPT},{inline_data:{mime_type:'image/jpeg',data:b64}}]}],generationConfig:{responseMimeType:'application/json',temperature:0}});
+  const body=JSON.stringify({contents:[{parts:[{text:scanPrompt()},{inline_data:{mime_type:'image/jpeg',data:b64}}]}],generationConfig:{responseMimeType:'application/json',temperature:0}});
   const cands=[lsGet(GMOD),...GMODELS].filter((m,i,a)=>m&&a.indexOf(m)===i);let last;
   for(const m of cands){
     let r,j;
@@ -770,8 +804,44 @@ async function geminiScan(b64){
     if(r.status===401||(r.status===400&&/api key/i.test(last.message)))throw new Error('Khoá API không hợp lệ. Kiểm tra lại trong Cài đặt.');
     // 404 / 403 / 429 / 5xx → thử model khác
   }
-  throw last||new Error('Không quét được hoá đơn.');
+  throw friendlyAiErr(last);
 }
+function friendlyAiErr(e){const m=String((e&&e.message)||'');return /quota|429|RESOURCE_EXHAUSTED|rate.?limit|overloaded|503/i.test(m)?new Error('Hạn mức miễn phí của AI đang hết hoặc quá tải. Hãy thử lại sau ít phút, hoặc sang ngày mai.'):(e||new Error('Không quét được hoá đơn.'))}
+// ---- Cách mặc định: Firebase AI Logic (Gemini Developer API qua Firebase, không cần khoá trong app) ----
+const AIMODELS=['gemini-3.5-flash','gemini-3.8-flash','gemini-3.1-flash-lite','gemini-3.5-flash-lite','gemini-2.5-flash'];
+const AMOD='sct.aiModel';
+const aiLogicOn=()=>!!(window.FIREBASE_CONFIG&&window.FIREBASE_CONFIG.apiKey&&window.FIREBASE_CONFIG.aiLogic);
+let AIL=null;
+async function getAIL(){
+  if(AIL)return AIL;
+  const cfg=window.FIREBASE_CONFIG,base='https://www.gstatic.com/firebasejs/12.6.0/';
+  const [app,ai]=await Promise.all([import(base+'firebase-app.js'),import(base+'firebase-ai.js')]);
+  const fa=app.initializeApp(cfg,'ai');
+  if(cfg.recaptchaSiteKey){const ac=await import(base+'firebase-app-check.js');ac.initializeAppCheck(fa,{provider:new ac.ReCaptchaV3Provider(cfg.recaptchaSiteKey),isTokenAutoRefreshEnabled:true})}
+  return AIL={ai:ai.getAI(fa,{backend:new ai.GoogleAIBackend()}),m:ai};
+}
+async function aiLogicScan(b64){
+  let A;try{A=await getAIL()}catch(e){throw new Error('Không tải được Firebase AI (đang offline?).')}
+  const cands=[lsGet(AMOD),...AIMODELS].filter((m,i,a)=>m&&a.indexOf(m)===i);let last;
+  for(const name of cands){
+    try{
+      const model=A.m.getGenerativeModel(A.ai,{model:name,generationConfig:{responseMimeType:'application/json',temperature:0}});
+      const res=await model.generateContent([scanPrompt(),{inlineData:{data:b64,mimeType:'image/jpeg'}}]);
+      const txt=String(res.response.text()||'').trim().replace(/^```(?:json)?|```$/g,'').trim();
+      if(!txt){last=new Error('AI không trả kết quả (ảnh có thể quá mờ hoặc bị chặn).');continue}
+      const o=JSON.parse(txt);lsSet(AMOD,name);return o;
+    }catch(e){
+      last=e;const m=String((e&&e.message)||e);
+      if(/app.?check/i.test(m))throw new Error('Firebase App Check chưa được cấu hình (xem hướng dẫn bật quét hoá đơn). Chi tiết: '+m.slice(0,160));
+      if(/api-not-enabled|to be enabled|firebasevertexai|403|PERMISSION|has not been used|not enabled|disabled|API.?key/i.test(m)&&!/quota/i.test(m))throw new Error('Firebase AI Logic chưa được bật cho project này. Vào Firebase Console → AI Logic → Get started → chọn Gemini Developer API. Chi tiết: '+m.slice(0,160));
+      if(e instanceof SyntaxError){last=new Error('AI trả về dữ liệu không đọc được, thử lại.')}
+      // 404 / 429 / quota → thử model khác
+    }
+  }
+  throw friendlyAiErr(last);
+}
+// Có khoá Gemini riêng thì dùng khoá đó; không thì dùng Firebase AI Logic
+async function runScan(b64){return lsGet(GKEY)?geminiScan(b64):aiLogicScan(b64)}
 function normScan(o){
   const ids=CATS.filter(c=>!c.inc).map(c=>c.id);
   const items=(Array.isArray(o&&o.items)?o.items:[]).map(i=>({name:String(i.name||'').slice(0,60),vi:String(i.vi||'').slice(0,60),price:Math.round(+i.price),
@@ -822,11 +892,11 @@ function scanAdd(){
 }
 $('#scanIn').onchange=async e=>{
   const f=e.target.files[0];e.target.value='';if(!f)return;
-  if(!lsGet(GKEY)){if(confirm('Quét hoá đơn cần khoá Gemini API (miễn phí, lấy ở aistudio.google.com/apikey). Mở phần cài đặt để dán khoá?'))document.querySelector('#tabs [data-t="set"]').click();return}
+  if(!lsGet(GKEY)&&!aiLogicOn()){if(confirm('Quét hoá đơn cần bật Firebase AI Logic hoặc khoá Gemini API (miễn phí). Mở phần cài đặt?'))document.querySelector('#tabs [data-t="set"]').click();return}
   scan={busy:true};renderScan();$('#scanBox').scrollIntoView({behavior:'smooth',block:'center'});
   try{
     const im=await loadImg(f),ai=scaleImg(im,1600,false),full=scaleImg(im,1024,false),thumb=scaleImg(im,96,true);
-    const d=normScan(await geminiScan(ai.split(',')[1]));
+    const d=normScan(await runScan(ai.split(',')[1]));
     scan=d.items.length?Object.assign(d,{full,thumb,taxOn:true}):{err:'Không thấy món nào trên ảnh. Hãy chụp rõ, thẳng và đủ sáng rồi thử lại.'};
   }catch(x){scan={err:x.message==='NOKEY'?'Chưa có khoá Gemini.':x.message}}
   renderScan();
@@ -834,7 +904,8 @@ $('#scanIn').onchange=async e=>{
 $('#scanBox').addEventListener('input',e=>{if(scan&&scan.items&&e.target.closest('.scrow'))scanSum()});
 $('#scanBox').addEventListener('change',e=>{if(!scan||!scan.items)return;if(e.target.id==='scTaxOn')scan.taxOn=e.target.checked;else if(e.target.closest('.scrow'))scanSum()});
 $('#scanBox').onclick=e=>{if(e.target.id==='scCancel'){scan=null;renderScan()}else if(e.target.id==='scAdd')scanAdd()};
-function renderAiKey(){const k=lsGet(GKEY);$('#gKeyDel').classList.toggle('hide',!k);$('#gKeyIn').placeholder=k?'Đã lưu khoá (••••'+k.slice(-4)+'). Dán khoá mới để thay.':'Dán khoá Gemini API'}
+function renderAiKey(){const k=lsGet(GKEY);
+  $('#aiStatus').textContent=k?'Đang dùng khoá Gemini riêng của bạn (đã lưu trên máy này).':aiLogicOn()?'Đang dùng Firebase AI Logic: không cần nhập khoá. Chụp hoá đơn bằng nút “Quét hoá đơn (AI)” ở ô nhập.':'Chưa bật. Hãy bật Firebase AI Logic trong Firebase Console, hoặc dán khoá Gemini riêng ở mục Nâng cao.';$('#gKeyDel').classList.toggle('hide',!k);$('#gKeyIn').placeholder=k?'Đã lưu khoá (••••'+k.slice(-4)+'). Dán khoá mới để thay.':'Dán khoá Gemini API'}
 $('#gKeySave').onclick=()=>{const v=$('#gKeyIn').value.trim();if(!v)return $('#gKeyMsg').textContent='Hãy dán khoá vào ô trên.';lsSet(GKEY,v);lsSet(GMOD,'');$('#gKeyIn').value='';$('#gKeyMsg').textContent='✅ Đã lưu khoá trên thiết bị này.';renderAiKey()};
 $('#gKeyDel').onclick=()=>{lsSet(GKEY,'');lsSet(GMOD,'');$('#gKeyMsg').textContent='Đã xoá khoá.';renderAiKey()};
 $('#gKeyTest').onclick=async()=>{
@@ -847,7 +918,7 @@ $('#gKeyTest').onclick=async()=>{
 renderAiKey();
 
 /* ---------- Cập nhật app ---------- */
-const APP_VERSION='2026.10.01-6';
+const APP_VERSION='2026.10.01-8';
 $('#verTxt').textContent='Phiên bản '+APP_VERSION;
 async function latestVersion(){
   const r=await fetch('index.html?_='+Date.now(),{cache:'no-store'});const m=(await r.text()).match(/APP_VERSION\s*=\s*'([^']+)'/);return m&&m[1];
@@ -944,7 +1015,7 @@ async function pushSync(){
   }catch(e){SYNC.msg='Chưa đồng bộ được: '+e.message;renderSync()}
   SYNC.pushing=false;
 }
-const updSyncStat=()=>{const el=$('#syncStat');if(el)el.textContent=SYNC.msg||(SYNC.last?'✅ Đồng bộ lúc '+SYNC.last.toLocaleTimeString('vi-VN'):'Đang đồng bộ…')};
+const updSyncStat=()=>{const el=$('#syncStat');if(el)el.textContent=SYNC.msg||(SYNC.last?'✅ Đồng bộ lúc '+SYNC.last.toLocaleTimeString(LOC):'Đang đồng bộ…')};
 function renderSync(){
   const b=$('#syncBox');
   if(!window.FIREBASE_CONFIG||!window.FIREBASE_CONFIG.apiKey){b.innerHTML='<div class="mut">Chưa bật. Làm theo file <b>HUONG-DAN-FIREBASE.md</b>, rồi dán cấu hình vào <b>firebase-config.js</b> và đưa lại thư mục lên hosting.</div>';return}

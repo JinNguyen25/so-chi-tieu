@@ -63,3 +63,30 @@ Mở app → **Cài đặt → Đồng bộ** → Tạo tài khoản. Trên các
 - Ví, ngân sách, nhóm, mục tiêu được đồng bộ theo kiểu "bản sửa mới nhất thắng";
   nếu 2 máy cùng sửa phần này khi offline thì máy sửa sau cùng sẽ được giữ.
 - Giao diện sáng/tối và giờ nhắc ghi chép được lưu riêng trên từng máy.
+
+---
+
+# Bật quét hoá đơn bằng AI (Firebase AI Logic)
+
+App gọi Gemini qua Firebase nên **không cần dán khoá API** vào app. Gói Spark (miễn phí) dùng được.
+
+## A. Bật AI Logic
+1. Firebase Console → project của bạn → **AI Services → AI Logic → Get started**.
+2. Khi được hỏi nhà cung cấp, chọn **Gemini Developer API** (miễn phí) rồi hoàn tất.
+3. Đợi vài phút cho hệ thống cập nhật.
+
+## B. Bật App Check (bắt buộc từ 2/11/2026, nên làm luôn)
+App Check chặn người lạ dùng ké hạn mức AI của bạn.
+1. Vào https://www.google.com/recaptcha/admin/create
+   - Label: `so-chi-tieu`; loại **reCAPTCHA v3**; Domains: `jinnguyen25.github.io`; gửi.
+   - Sao chép **Site key** (công khai) và **Secret key** (bí mật, đừng gửi cho ai).
+2. Firebase Console → **Security → App Check → Apps** → chọn app web → **reCAPTCHA** → dán **Secret key** → Save.
+3. Mở file `firebase-config.js`, điền Site key vào `recaptchaSiteKey: "..."`.
+4. Đưa lại thư mục lên hosting (hoặc nhờ Claude đẩy giúp).
+
+## C. Dùng
+Ô nhập → **🧾 Quét hoá đơn (AI)** → chụp hoá đơn → kiểm tra từng món → **Thêm vào chi tiêu**.
+Nếu app báo "Firebase AI Logic chưa được bật" hoặc "App Check chưa được cấu hình" thì làm lại bước A/B, đợi vài phút rồi thử lại.
+
+## Dự phòng: khoá Gemini riêng
+Cài đặt → Quét hoá đơn bằng AI → *Nâng cao* → dán khoá lấy ở https://aistudio.google.com/apikey (khoá chỉ lưu trên thiết bị đó).
