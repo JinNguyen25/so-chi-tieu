@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#4f46e5">
+<meta name="theme-color" content="#16305a">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -21,7 +21,7 @@
 body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 system-ui,Segoe UI,Roboto,sans-serif;padding-bottom:env(safe-area-inset-bottom)}
 .wrap{max-width:980px;margin:0 auto;padding:calc(12px + env(safe-area-inset-top)) 14px 40px}
 header{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
-h1{font-size:20px;margin:0}
+h1{font-size:20px;margin:0;display:flex;align-items:center;gap:8px}.logo{width:30px;height:30px;border-radius:8px;flex:none}
 nav{display:flex;gap:4px;background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:4px;margin:12px 0;overflow-x:auto;position:sticky;top:6px;z-index:5;scrollbar-width:none}
 nav::-webkit-scrollbar{display:none}
 nav button{flex:none;white-space:nowrap;border:0;background:none;color:var(--mut);padding:8px 13px;border-radius:9px;cursor:pointer;font:inherit}
@@ -87,7 +87,7 @@ td.r,th.r{text-align:right}
 <body>
 <div class="wrap">
 <header>
-  <h1>💸 Sổ Chi Tiêu</h1>
+  <h1><img src="icon-192.png" alt="" class="logo"> Sổ Chi Tiêu</h1>
   <div class="row">
     <button class="btn ghost sm" id="prev">‹</button>
     <strong id="monthLbl" style="min-width:90px;text-align:center"></strong>
@@ -1053,7 +1053,7 @@ $('#gKeyTest').onclick=async()=>{
 renderAiKey();
 
 /* ---------- Cập nhật app ---------- */
-const APP_VERSION='2026.10.02-7';
+const APP_VERSION='2026.10.02-8';
 $('#verTxt').textContent='Phiên bản '+APP_VERSION;
 async function latestVersion(){
   const r=await fetch('index.html?_='+Date.now(),{cache:'no-store'});const m=(await r.text()).match(/APP_VERSION\s*=\s*'([^']+)'/);return m&&m[1];
