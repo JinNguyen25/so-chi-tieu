@@ -126,7 +126,7 @@ td.r,th.r{text-align:right}
     <button class="btn ghost hide" id="qCancel">Huỷ</button>
   </div>
   <div class="chips" id="qCats"></div>
-  <div class="row" id="qImgRow"><label class="btn ghost sm" style="cursor:pointer">📷 Thêm ảnh<input id="qImgIn" type="file" accept="image/*" hidden></label><img id="qImgPrev" class="thumb hide" alt="ảnh"><button class="x hide" id="qImgDel" title="Bỏ ảnh">✕</button><label class="btn sm" style="cursor:pointer">🧾 Quét hoá đơn (AI)<input id="scanIn" type="file" accept="image/*" hidden></label><button class="btn ghost sm" id="emBtn">📧 Dán email</button><span class="mut">Ảnh để nhớ khoản chi. Quét hoá đơn hoặc ảnh chụp lịch sử giao dịch (Apple Wallet, app ngân hàng) để AI tách từng dòng và phân loại.</span></div>
+  <div class="row" id="qImgRow"><label class="btn ghost sm" style="cursor:pointer">📷 Thêm ảnh<input id="qImgIn" type="file" accept="image/*" hidden></label><img id="qImgPrev" class="thumb hide" alt="ảnh"><button class="x hide" id="qImgDel" title="Bỏ ảnh">✕</button><label class="btn sm" style="cursor:pointer">🧾 Quét hoá đơn (AI)<input id="scanIn" type="file" accept="image/*" hidden></label><button class="btn ghost sm" id="emBtn">📧 Dán email</button><button class="btn ghost sm" id="gmBtn">📬 Nhập từ Gmail</button><span class="mut">Ảnh để nhớ khoản chi. Quét hoá đơn hoặc ảnh chụp lịch sử giao dịch (Apple Wallet, app ngân hàng) để AI tách từng dòng và phân loại.</span></div>
   <div class="mut" id="qHint">Mẹo: gõ “500 bento” vào ô số tiền rồi Enter — app tự tách số tiền, ghi chú và đoán danh mục.</div>
 </div>
 
@@ -213,7 +213,13 @@ td.r,th.r{text-align:right}
       <div class="mut" style="margin-top:6px">Chỉ cần khi không dùng Firebase AI Logic. Lấy khoá miễn phí tại <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="color:var(--pri)">aistudio.google.com/apikey</a> → <b>Create API key</b>. Khoá chỉ lưu trên thiết bị này (không đồng bộ, không nằm trong sao lưu).</div>
       <div class="row" style="margin-top:8px"><input id="gKeyIn" class="grow" type="password" placeholder="Dán khoá Gemini API" autocomplete="off"><button class="btn" id="gKeySave">Lưu</button><button class="btn ghost" id="gKeyTest">Thử khoá</button><button class="btn ghost hide" id="gKeyDel">Xoá khoá</button></div>
       <div class="mut" id="gKeyMsg" style="margin-top:6px"></div></details></div>
-  <div class="card"><h3>Phiên bản & cập nhật</h3>
+  <div class="card" id="gmCard"><h3>📬 Nhập từ Gmail</h3>
+    <div class="mut" id="gmStatus"></div>
+    <div class="mut" style="margin-top:8px">Bộ lọc tìm email (cú pháp như ô tìm kiếm của Gmail):</div>
+    <textarea id="gmQ" style="min-height:76px;margin-top:4px"></textarea>
+    <div class="row" style="margin-top:8px"><button class="btn" id="gmSave">Lưu bộ lọc</button><button class="btn ghost" id="gmReset">Mặc định</button></div>
+    <div class="mut" id="gmMsg" style="margin-top:6px"></div>
+    <div class="mut" style="margin-top:6px">Chỉ đọc (không sửa/xoá) các email khớp bộ lọc; quyền không được lưu lại. Email ゆうちょデビット đọc ngay trên máy, các email khác được gửi tới Google Gemini để đọc.</div></div>  <div class="card"><h3>Phiên bản & cập nhật</h3>
     <div class="row"><span class="mut" id="verTxt"></span><button class="btn ghost sm" id="updBtn">Kiểm tra cập nhật</button></div><div class="mut" id="updMsg" style="margin-top:6px"></div></div>
   <div class="card"><h3>Cài đặt app</h3>
     <div class="row"><button class="btn hide" id="installBtn">📲 Cài lên màn hình chính</button><span class="mut" id="installNote"></span></div></div>
@@ -870,7 +876,7 @@ function renderScan(){
   const b=$('#scanBox');if(!scan){b.classList.add('hide');return}
   b.classList.remove('hide');
   if(scan.paste){b.innerHTML='<h3>📧 Nhập từ email</h3><div class="mut">Mở email thông báo (ゆうちょデビット, Apple, Rakuten…), chọn hết chữ, sao chép rồi dán vào đây. Dán được nhiều email cùng lúc.</div><textarea id="emText" placeholder="利用日時 2026/10/01 20:04:34&#10;利用店舗 COMODI-IIDA MABASHITE&#10;利用金額 308円" style="margin-top:8px"></textarea><div class="row" style="margin-top:8px"><button class="btn" id="emGo">Phân tích</button><button class="btn ghost" id="scCancel">Đóng</button></div>';return}
-  if(scan.busy){b.innerHTML='<h3>🧾 Quét hoá đơn</h3><div>⏳ Đang đọc hoá đơn… (vài giây)</div>';return}
+  if(scan.busy){b.innerHTML='<h3>🧾 Quét hoá đơn</h3><div>'+(scan.msg||'⏳ Đang đọc hoá đơn… (vài giây)')+'</div>';return}
   if(scan.err){b.innerHTML=`<h3>🧾 Quét hoá đơn</h3><div class="exp">${esc(scan.err)}</div><div class="row" style="margin-top:8px"><button class="btn ghost" id="scCancel">Đóng</button></div>`;return}
   const tl=scan.kind==='transactions';
   b.innerHTML=`<h3>🧾 Kết quả quét${scan.store?' · '+esc(scan.store):''}</h3>
@@ -906,6 +912,7 @@ function scanAdd(){
   if(!made.length)return alert('Chưa có món nào được chọn.');
   if(scan.full)IMG.put('img',sid,scan.full);
   made.forEach(t=>{S.tx.push(t);if(scan.thumb){thumbs[t.id]=scan.thumb;IMG.put('thumb',t.id,scan.thumb);IMG.put('img',t.id,'ref:'+sid)}});
+  if(scan.fromGmail)lsSet(GM_LAST,String(Date.now()));
   S.lastW=w;save();
   $('#qHint').innerHTML=`✅ Đã thêm ${made.length} khoản từ hoá đơn (${fmt(made.filter(t=>t.type==='exp').reduce((a,t)=>a+t.amt,0))})`;
   const last=made.map(t=>t.date).sort().pop(),d=new Date(last);view=new Date(d.getFullYear(),d.getMonth(),1);
@@ -940,29 +947,98 @@ function parseYucho(text){
   return{items,rest:text.replace(re,' ')};
 }
 $('#emBtn').onclick=()=>{scan={paste:true};renderScan();$('#scanBox').scrollIntoView({behavior:'smooth',block:'center'});setTimeout(()=>{const e=$('#emText');if(e)e.focus()},50)};
+// Phân tích danh sách email: ゆうちょデビット đọc cục bộ, phần còn lại gửi AI (1 lượt cho tất cả)
+async function analyzeEmailTexts(texts){
+  const local=[],aiTexts=[];
+  texts.forEach(t=>{
+    const{items,rest}=parseYucho(t);local.push(...items);
+    const rc=rest.replace(/[\s\-=_*>|]+/g,' ').trim();
+    if(!items.length||rc.length>60)aiTexts.push(items.length?rest:t);
+  });
+  let raw={kind:'transactions',items:[]};
+  if(aiTexts.length){
+    if(!lsGet(GKEY)&&!aiLogicOn()){if(!local.length)throw new Error('Cần bật Firebase AI Logic hoặc khoá Gemini API để đọc email loại này.')}
+    else{
+      try{raw=await runScan({text:aiTexts.map((t,i)=>'=== EMAIL '+(i+1)+' ===\n'+t.slice(0,4000)).join('\n\n').slice(0,40000)})}
+      catch(x){if(!local.length)throw x}
+    }
+  }
+  const d=normScan(raw);d.kind='transactions';
+  local.forEach(i=>d.items.push(i));
+  // cờ trùng cho toàn bộ danh sách (gồm cả dòng đọc cục bộ): trùng giao dịch đã có hoặc dòng khác trong lượt này, lệch ≤1 ngày
+  d.items.forEach((i,k)=>{i.dup=S.tx.some(t=>t.type===i.type&&t.amt===i.price&&dayDiff(t.date,i.date)<=1)||d.items.slice(0,k).some(j=>j.type===i.type&&j.price===i.price&&dayDiff(j.date,i.date)<=1)});
+  d.date=today();
+  if(!d.items.length)throw new Error('Không tìm thấy giao dịch nào trong nội dung đã dán.');
+  return d;
+}
 async function emailAnalyze(){
   const text=$('#emText').value.trim();
   if(text.length<10)return alert('Hãy dán nội dung email vào ô trên.');
-  const{items:local,rest}=parseYucho(text);
-  const restClean=rest.replace(/[\s\-=_*>|]+/g,' ').trim();
-  const needAI=restClean.length>60||!local.length;   // còn phần chưa hiểu → nhờ AI
   scan={busy:true};renderScan();
-  let raw={kind:'transactions',items:[]};
-  try{
-    if(needAI){
-      if(!lsGet(GKEY)&&!aiLogicOn()){if(!local.length)throw new Error('Cần bật Firebase AI Logic hoặc khoá Gemini API để đọc email loại này.')}
-      else raw=await runScan({text:restClean.length>60?rest:text});
-    }
-  }catch(x){if(!local.length){scan={err:x.message};renderScan();return}}
-  const d=normScan(raw);d.kind='transactions';
-  const today0=today();
-  local.forEach(i=>d.items.push(i));
-  // làm lại cờ trùng cho toàn bộ danh sách (gồm cả dòng đọc cục bộ)
-  d.items.forEach((i,k)=>{i.dup=S.tx.some(t=>t.type===i.type&&t.amt===i.price&&dayDiff(t.date,i.date)<=1)||d.items.slice(0,k).some(j=>j.type===i.type&&j.price===i.price&&dayDiff(j.date,i.date)<=1)});
-  d.date=today0;
-  scan=d.items.length?d:{err:'Không tìm thấy giao dịch nào trong nội dung đã dán.'};
+  try{scan=await analyzeEmailTexts([text])}catch(x){scan={err:x.message}}
   renderScan();
-}$('#scanBox').onclick=e=>{if(e.target.id==='scCancel'){scan=null;renderScan()}else if(e.target.id==='scAdd')scanAdd();else if(e.target.id==='emGo')emailAnalyze()};
+}
+
+/* ---------- Nhập từ Gmail (OAuth ngay trong trình duyệt, chỉ đọc, không lưu quyền) ---------- */
+const GM_Q='sct.gmailQuery',GM_LAST='sct.gmailLast';
+const GM_DEFAULT_Q='(from:yuchodebit OR (from:apple (subject:領収書 OR subject:Receipt)) OR subject:(ご利用 OR 利用のお知らせ OR 領収書 OR 決済 OR お支払い))';
+const gmailOn=()=>!!(window.FIREBASE_CONFIG&&window.FIREBASE_CONFIG.googleClientId);
+const loadGIS=()=>(window.google&&google.accounts&&google.accounts.oauth2)?Promise.resolve():new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://accounts.google.com/gsi/client';s.onload=res;s.onerror=()=>rej(new Error('Không tải được Google Sign-In (đang offline?).'));document.head.appendChild(s)});
+function gmailToken(){
+  return loadGIS().then(()=>new Promise((res,rej)=>{
+    const tc=google.accounts.oauth2.initTokenClient({client_id:window.FIREBASE_CONFIG.googleClientId,scope:'https://www.googleapis.com/auth/gmail.readonly',
+      callback:r=>r.access_token?res(r.access_token):rej(new Error(r.error_description||r.error||'Chưa được cấp quyền Gmail.')),
+      error_callback:e=>rej(new Error(e.type==='popup_closed'?'Bạn đã đóng cửa sổ cấp quyền Gmail.':e.type==='popup_failed_to_open'?'Trình duyệt chặn cửa sổ đăng nhập Google. Hãy cho phép cửa sổ bật lên, hoặc mở app bằng Chrome/Safari thay vì bản đã cài.':(e.message||e.type||'Lỗi cấp quyền Gmail.')))});
+    tc.requestAccessToken({prompt:''});
+  }));
+}
+async function gmailApi(path,token){
+  const r=await fetch('https://gmail.googleapis.com/gmail/v1/users/me/'+path,{headers:{Authorization:'Bearer '+token}});
+  if(!r.ok){const j=await r.json().catch(()=>({}));const m=(j.error&&j.error.message)||('HTTP '+r.status);
+    throw new Error(r.status===403?'Gmail từ chối truy cập: kiểm tra đã bật Gmail API và thêm email của bạn vào Test users. Chi tiết: '+m:m)}
+  return r.json();
+}
+const b64u=s=>new TextDecoder('utf-8').decode(Uint8Array.from(atob(s.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0)));
+function gmailBody(p){
+  let plain='',html='';
+  (function walk(x){
+    if(x.mimeType==='text/plain'&&x.body&&x.body.data)plain+=b64u(x.body.data)+'\n';
+    else if(x.mimeType==='text/html'&&x.body&&x.body.data)html+=b64u(x.body.data);
+    (x.parts||[]).forEach(walk);
+  })(p);
+  if(plain.trim())return plain;
+  if(!html)return '';
+  const d=new DOMParser().parseFromString(html.replace(/<(br|\/p|\/div|\/tr|\/td|\/th|\/li|\/h\d)[^>]*>/gi,'\n'),'text/html');
+  d.querySelectorAll('style,script,head').forEach(e=>e.remove());
+  return (d.body.textContent||'').replace(/[ \t\u00a0]+/g,' ').replace(/\n[ \t]*/g,'\n').replace(/\n{3,}/g,'\n\n');
+}
+async function gmailImport(){
+  scan={busy:true,msg:'⏳ Đang xin quyền Gmail…'};renderScan();$('#scanBox').scrollIntoView({behavior:'smooth',block:'center'});
+  try{
+    const token=await gmailToken();
+    scan={busy:true,msg:'⏳ Đang đọc email từ Gmail…'};renderScan();
+    const last=+lsGet(GM_LAST),days=last?Math.min(30,Math.max(1,Math.ceil((Date.now()-last)/864e5)+1)):7;
+    const q=(lsGet(GM_Q)||GM_DEFAULT_Q)+' newer_than:'+days+'d';
+    const list=await gmailApi('messages?maxResults=40&q='+encodeURIComponent(q),token);
+    const ids=(list.messages||[]).map(m=>m.id);
+    if(!ids.length){scan={err:'Không có email nào khớp bộ lọc trong '+days+' ngày qua.'};renderScan();return}
+    const texts=[];
+    for(let i=0;i<ids.length;i+=5)await Promise.all(ids.slice(i,i+5).map(async id=>{
+      const m=await gmailApi('messages/'+id+'?format=full',token),h=n=>((m.payload.headers||[]).find(x=>x.name.toLowerCase()===n)||{}).value||'';
+      texts.push('From: '+h('from')+'\nSubject: '+h('subject')+'\nDate: '+h('date')+'\n\n'+gmailBody(m.payload));
+    }));
+    scan={busy:true,msg:'⏳ Đang phân tích '+texts.length+' email…'};renderScan();
+    scan=await analyzeEmailTexts(texts);scan.fromGmail=true;scan.mailCount=texts.length;
+  }catch(x){scan={err:x.message}}
+  renderScan();
+}
+$('#gmBtn').onclick=gmailImport;
+if(!gmailOn())$('#gmBtn').classList.add('hide');else loadGIS().catch(()=>{});   // tải sẵn để cửa sổ cấp quyền mở kịp khi bấm
+$('#gmQ').value=lsGet(GM_Q)||GM_DEFAULT_Q;
+$('#gmSave').onclick=()=>{lsSet(GM_Q,$('#gmQ').value.trim()===GM_DEFAULT_Q?'':$('#gmQ').value.trim());$('#gmMsg').textContent='✅ Đã lưu bộ lọc.'};
+$('#gmReset').onclick=()=>{lsSet(GM_Q,'');$('#gmQ').value=GM_DEFAULT_Q;$('#gmMsg').textContent='Đã khôi phục bộ lọc mặc định.'};
+$('#gmStatus').textContent=gmailOn()?'Bấm “📬 Nhập từ Gmail” ở ô nhập để lấy các email thông báo mới. Mỗi lần dùng app sẽ xin quyền đọc Gmail.':'Chưa bật (thiếu googleClientId trong firebase-config.js).';
+$('#scanBox').onclick=e=>{if(e.target.id==='scCancel'){scan=null;renderScan()}else if(e.target.id==='scAdd')scanAdd();else if(e.target.id==='emGo')emailAnalyze()};
 function renderAiKey(){const k=lsGet(GKEY);
   $('#aiStatus').textContent=k?'Đang dùng khoá Gemini riêng của bạn (đã lưu trên máy này).':aiLogicOn()?'Đang dùng Firebase AI Logic: không cần nhập khoá. Chụp hoá đơn bằng nút “Quét hoá đơn (AI)” ở ô nhập.':'Chưa bật. Hãy bật Firebase AI Logic trong Firebase Console, hoặc dán khoá Gemini riêng ở mục Nâng cao.';$('#gKeyDel').classList.toggle('hide',!k);$('#gKeyIn').placeholder=k?'Đã lưu khoá (••••'+k.slice(-4)+'). Dán khoá mới để thay.':'Dán khoá Gemini API'}
 $('#gKeySave').onclick=()=>{const v=$('#gKeyIn').value.trim();if(!v)return $('#gKeyMsg').textContent='Hãy dán khoá vào ô trên.';lsSet(GKEY,v);lsSet(GMOD,'');$('#gKeyIn').value='';$('#gKeyMsg').textContent='✅ Đã lưu khoá trên thiết bị này.';renderAiKey()};
@@ -977,7 +1053,7 @@ $('#gKeyTest').onclick=async()=>{
 renderAiKey();
 
 /* ---------- Cập nhật app ---------- */
-const APP_VERSION='2026.10.02-6';
+const APP_VERSION='2026.10.02-7';
 $('#verTxt').textContent='Phiên bản '+APP_VERSION;
 async function latestVersion(){
   const r=await fetch('index.html?_='+Date.now(),{cache:'no-store'});const m=(await r.text()).match(/APP_VERSION\s*=\s*'([^']+)'/);return m&&m[1];

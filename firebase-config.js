@@ -13,5 +13,7 @@ window.FIREBASE_CONFIG = {
   aiLogic: true,
   // Khoá công khai (site key) của Fraud Defense / reCAPTCHA Enterprise dùng cho App Check.
   recaptchaSiteKey: "6LdQtNktAAAAANacM38XHnGloeoDkmMOjrB232ez",
+  // OAuth Client ID (công khai) cho nút "Nhập từ Gmail"; origin được phép: https://jinnguyen25.github.io
+  googleClientId: "594595564366-0u3fsr8sf8113lo8vh314tcqp3v7nsn9.apps.googleusercontent.com",
   recaptchaType: "enterprise"   // "enterprise" (Fraud Defense) hoặc "v3" (reCAPTCHA Classic, đã ngừng)
 };

@@ -49,6 +49,8 @@ re: [
   [/Danh mục theo dõi: (.+?) · bắt đầu (\S+)/g, '対象費目: $1 ・ 開始日 $2'],
   [/^\s*ngày\s*$/g, '日'],
   [/> ngày</g, '>日<'],
+  [/⏳ Đang phân tích (\d+) email…/g, '⏳ $1件のメールを解析中…'],
+  [/Không có email nào khớp bộ lọc trong (\d+) ngày qua\./g, '過去$1日間にフィルターに一致するメールはありません。'],
   [/^ngày (\d+)$/g, '$1日'],
 
   // báo cáo
@@ -243,6 +245,7 @@ ph: [
   ['Không kết nối được tới Gemini (đang offline?).', 'Geminiに接続できません（オフライン？）。'],
   ['Hạn mức miễn phí của AI đang hết hoặc quá tải. Hãy thử lại sau ít phút, hoặc sang ngày mai.', 'AIの無料枠が上限に達したか、混雑しています。数分後、または明日もう一度お試しください。'],
   ['Không quét được hoá đơn.', 'レシートをスキャンできませんでした。'], ['📧 Nhập từ email', '📧 メールから取り込み'], ['Mở email thông báo (ゆうちょデビット, Apple, Rakuten…), chọn hết chữ, sao chép rồi dán vào đây. Dán được nhiều email cùng lúc.', '通知メール（ゆうちょデビット、Apple、楽天など）を開き、本文をすべて選択してコピーし、ここに貼り付けてください。複数のメールをまとめて貼り付けられます。'], ['Phân tích', '解析'], ['📧 Dán email', '📧 メールを貼り付け'], ['Hãy dán nội dung email vào ô trên.', '上の欄にメール本文を貼り付けてください。'], ['Cần bật Firebase AI Logic hoặc khoá Gemini API để đọc email loại này.', 'この種類のメールを読むにはFirebase AI LogicまたはGemini APIキーが必要です。'], ['Không tìm thấy giao dịch nào trong nội dung đã dán.', '貼り付けた内容から取引が見つかりませんでした。'],
+  ['📬 Nhập từ Gmail', '📬 Gmailから取り込み'], ['⏳ Đang xin quyền Gmail…', '⏳ Gmailの権限を確認中…'], ['⏳ Đang đọc email từ Gmail…', '⏳ Gmailからメールを読み込み中…'], ['Bấm “📬 Nhập từ Gmail” ở ô nhập để lấy các email thông báo mới. Mỗi lần dùng app sẽ xin quyền đọc Gmail.', '入力欄の「📬 Gmailから取り込み」を押すと、新しい通知メールを取得します。利用のたびにGmailの読み取り権限を求めます。'], ['Chưa bật (thiếu googleClientId trong firebase-config.js).', '未設定です（firebase-config.jsにgoogleClientIdがありません）。'], ['Bộ lọc tìm email (cú pháp như ô tìm kiếm của Gmail):', 'メール検索フィルター（Gmailの検索欄と同じ構文）:'], ['Lưu bộ lọc', 'フィルターを保存'], ['Mặc định', '既定に戻す'], ['✅ Đã lưu bộ lọc.', '✅ フィルターを保存しました。'], ['Đã khôi phục bộ lọc mặc định.', 'フィルターを既定に戻しました。'], ['Chỉ đọc (không sửa/xoá) các email khớp bộ lọc; quyền không được lưu lại. Email ゆうちょデビット đọc ngay trên máy, các email khác được gửi tới Google Gemini để đọc.', '条件に一致するメールを読み取り専用で取得します（変更・削除はしません）。権限は保存されません。ゆうちょデビットのメールは端末内で解析し、その他のメールはGoogle Geminiに送信して読み取ります。'], ['Không tải được Google Sign-In (đang offline?).', 'Googleログインを読み込めません（オフライン？）。'], ['Bạn đã đóng cửa sổ cấp quyền Gmail.', 'Gmail権限の確認ウィンドウが閉じられました。'], ['Trình duyệt chặn cửa sổ đăng nhập Google. Hãy cho phép cửa sổ bật lên, hoặc mở app bằng Chrome/Safari thay vì bản đã cài.', 'ブラウザがGoogleログインのウィンドウをブロックしました。ポップアップを許可するか、インストール版ではなくChrome/Safariで開いてください。'], ['Chưa được cấp quyền Gmail.', 'Gmailの権限が付与されていません。'], ['Lỗi cấp quyền Gmail.', 'Gmail権限エラー。'], ['Gmail từ chối truy cập: kiểm tra đã bật Gmail API và thêm email của bạn vào Test users. Chi tiết:', 'Gmailがアクセスを拒否しました。Gmail APIの有効化と、ご自身のメールをTest usersに追加したか確認してください。詳細:'],
   ['Không tải được Firebase AI (đang offline?).', 'Firebase AIを読み込めません（オフライン？）。'],
   ['Firebase App Check chưa được cấu hình (xem hướng dẫn bật quét hoá đơn). Chi tiết:', 'Firebase App Checkが未設定です（レシートスキャン有効化の手順を参照）。詳細:'],
   ['Firebase AI Logic chưa được bật cho project này. Vào Firebase Console → AI Logic → Get started → chọn Gemini Developer API. Chi tiết:', 'このプロジェクトでFirebase AI Logicが有効になっていません。Firebase Console → AI Logic → Get started → Gemini Developer API を選択してください。詳細:'],
